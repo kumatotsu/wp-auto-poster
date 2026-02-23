@@ -1,0 +1,25 @@
+[project]
+name = "wp-auto-poster"
+version = "0.1.0"
+description = "WordPress記事自動投稿システム（Claude Code Skills + Gemini API画像生成）"
+requires-python = ">=3.10"
+dependencies = [
+    "google-genai>=1.0.0",
+    "requests>=2.31.0",
+    "python-dotenv>=1.0.0",
+    "python-slugify>=8.0.0",
+    "Pillow>=10.0.0",
+    "playwright>=1.40.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+]

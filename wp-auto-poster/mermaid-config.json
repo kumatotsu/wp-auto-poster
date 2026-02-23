@@ -1,0 +1,17 @@
+{
+  "theme": "default",
+  "themeVariables": {
+    "fontSize": "16px",
+    "fontFamily": "'Noto Sans JP', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', sans-serif"
+  },
+  "flowchart": {
+    "htmlLabels": true,
+    "curve": "basis",
+    "padding": 15
+  },
+  "sequence": {
+    "actorFontFamily": "'Noto Sans JP', sans-serif",
+    "messageFontFamily": "'Noto Sans JP', sans-serif",
+    "noteFontFamily": "'Noto Sans JP', sans-serif"
+  }
+}
