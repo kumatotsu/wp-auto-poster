@@ -147,3 +147,5 @@ uv run python lib/screenshot_capturer.py --url https://claude.ai --output screen
 ## ライセンス
 
 MIT
+
+<\!-- updated 2026-02-23 -->
