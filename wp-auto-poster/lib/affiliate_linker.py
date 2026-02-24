@@ -15,7 +15,7 @@ import json
 import sys
 import uuid
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 # ──────────────────────────────────────────────
 # config読み込み（直接実行 / パッケージインポート両対応）
@@ -63,6 +63,100 @@ def _generate_unique_id() -> str:
 def _escape_json_string(s: str) -> str:
     """JSON文字列内のエスケープが必要な文字を処理する。"""
     return s.replace('\\', '\\\\').replace('"', '\\"').replace('/', '\\/')
+
+
+def _parse_image_url(image_url: str) -> tuple[str, str, str]:
+    """画像URLをmoshimoのd/c_p/pフォーマットに分解する。
+
+    もしもかんたんリンクの画像は d + c_p + p[0] で構成される。
+    例: d="https://m.media-amazon.com", c_p="/images/I", p=["/xxx.jpg"]
+
+    Args:
+        image_url: 完全な画像URL
+
+    Returns:
+        (image_d, image_c_p, image_p) のタプル（エスケープ済み）
+    """
+    if not image_url:
+        return ("", "", "[]")
+
+    parsed = urlparse(image_url)
+    domain = f"{parsed.scheme}://{parsed.netloc}"
+    path = parsed.path
+    if parsed.query:
+        path += f"?{parsed.query}"
+
+    escaped_domain = _escape_json_string(domain)
+    escaped_path = _escape_json_string(path)
+
+    return (escaped_domain, "", f'["{escaped_path}"]')
+
+
+def _fetch_book_image(isbn: str) -> str:
+    """ISBN（ASIN）から書籍カバー画像URLを取得する。
+
+    1. Amazon商品画像URLパターン（ASIN直接指定）
+    2. Google Books API でISBN検索
+    3. Open Library Covers にフォールバック
+
+    Args:
+        isbn: 書籍のISBN（= Amazon ASIN）
+
+    Returns:
+        画像URL文字列。取得失敗時は空文字列。
+    """
+    import requests as req
+
+    # 1. Amazon商品画像URLパターン（ASINから直接画像URLを生成）
+    amazon_img_url = (
+        f"https://m.media-amazon.com/images/P/{isbn}.01._SCLZZZZZZZ_SX200_.jpg"
+    )
+    try:
+        resp = req.head(amazon_img_url, timeout=10, allow_redirects=True)
+        if resp.status_code == 200:
+            content_type = resp.headers.get("Content-Type", "")
+            if "image" in content_type:
+                print(f"  [画像] Amazon から取得: {amazon_img_url}")
+                return amazon_img_url
+    except Exception as e:
+        print(f"  [画像] Amazon画像取得エラー: {e}")
+
+    # 2. Google Books API
+    try:
+        resp = req.get(
+            "https://www.googleapis.com/books/v1/volumes",
+            params={"q": f"isbn:{isbn}"},
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            items = data.get("items", [])
+            if items:
+                image_links = (
+                    items[0].get("volumeInfo", {}).get("imageLinks", {})
+                )
+                for key in ("medium", "small", "thumbnail", "smallThumbnail"):
+                    url = image_links.get(key, "")
+                    if url:
+                        url = url.replace("http://", "https://")
+                        url = url.replace("&edge=curl", "")
+                        print(f"  [画像] Google Books から取得: {url}")
+                        return url
+    except Exception as e:
+        print(f"  [画像] Google Books API エラー: {e}")
+
+    # 3. Open Library Covers
+    ol_url = f"https://covers.openlibrary.org/b/isbn/{isbn}-L.jpg"
+    try:
+        resp = req.get(ol_url, timeout=10, allow_redirects=True)
+        if resp.status_code == 200 and len(resp.content) > 1000:
+            print(f"  [画像] Open Library から取得: {ol_url}")
+            return ol_url
+    except Exception as e:
+        print(f"  [画像] Open Library エラー: {e}")
+
+    print(f"  [画像] ISBN {isbn} の画像が見つかりませんでした")
+    return ""
 
 
 class MoshimoEasyLinkGenerator:
@@ -143,17 +237,12 @@ class MoshimoEasyLinkGenerator:
             )
 
         # 画像URL処理
-        # 楽天の画像URL形式: "d"がベースURL、"p"がパス配列
-        # Amazon画像URL形式: "d"がフルURL、"c_p"と"p"は空
-        if image_url:
-            escaped_image = _escape_json_string(image_url)
-            image_d = escaped_image
-            image_c_p = ""
-            image_p = "[]"
-        else:
-            image_d = ""
-            image_c_p = ""
-            image_p = "[]"
+        # image_url が空の場合、ASIN から自動取得を試みる
+        if not image_url and asin:
+            image_url = _fetch_book_image(asin)
+
+        # 画像URLをmoshimoの d / c_p / p フォーマットに分解
+        image_d, image_c_p, image_p = _parse_image_url(image_url)
 
         # メインURLの決定（楽天URLがあれば楽天、なければAmazon）
         if rakuten_url:

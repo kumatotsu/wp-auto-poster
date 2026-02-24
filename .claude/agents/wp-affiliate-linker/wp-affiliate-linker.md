@@ -99,7 +99,7 @@ permissionMode: acceptEdits
 - `keyword`: 楽天・Amazonの検索に使うキーワード
 - `asin`: Amazon ASIN。分かる場合は必ず入れる（商品ページへの直接リンクになる）
 - `publisher`: 出版社名（任意）
-- `image_url`: 商品画像URL（任意。空でもかんたんリンクは動作する）
+- `image_url`: 商品画像URL（任意。空の場合はASINからGoogle Books APIで自動取得される）
 - `rakuten_url`: 楽天の商品ページURL（任意。空の場合はキーワード検索になる）
 
 ### Step 5: かんたんリンクHTMLの生成
@@ -139,4 +139,4 @@ uv run python lib/affiliate_linker.py \
 - 書籍の選定は記事テーマとの関連性を最優先する
 - 古すぎる書籍（5年以上前）は避ける。ただし定番書は例外
 - ASINが確実に特定できない場合は無理に入れない（検索リンクで十分機能する）
-- 画像URLは必須ではない（もしものスクリプトが自動で取得する場合もある）
+- 画像URLは必須ではない（affiliate_linker.py がASINからGoogle Books API / Open Libraryで自動取得する）
