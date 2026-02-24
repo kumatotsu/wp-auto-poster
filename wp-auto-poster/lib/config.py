@@ -36,6 +36,23 @@ ILLUSTRATION_MODEL: str = "gemini-2.5-flash-image"
 ILLUSTRATION_ASPECT: str = "4:3"
 
 # ──────────────────────────────────────────────
+# もしもアフィリエイト設定
+# ──────────────────────────────────────────────
+MOSHIMO_AMAZON_AID: str = os.getenv("MOSHIMO_AMAZON_AID", "")
+MOSHIMO_RAKUTEN_AID: str = os.getenv("MOSHIMO_RAKUTEN_AID", "")
+MOSHIMO_AMAZON_PLID: str = os.getenv("MOSHIMO_AMAZON_PLID", "27060")
+MOSHIMO_RAKUTEN_PLID: str = os.getenv("MOSHIMO_RAKUTEN_PLID", "27059")
+
+# プラットフォーム固定値（もしもアフィリエイト共通）
+MOSHIMO_AMAZON_PID: str = "170"
+MOSHIMO_AMAZON_PCID: str = "185"
+MOSHIMO_RAKUTEN_PID: str = "54"
+MOSHIMO_RAKUTEN_PCID: str = "54"
+
+# かんたんリンクスクリプトURL
+MOSHIMO_SCRIPT_URL: str = "//dn.msmstatic.com/site/cardlink/bundle.js?20210203"
+
+# ──────────────────────────────────────────────
 # パス設定
 # ──────────────────────────────────────────────
 PROJECT_ROOT: Path = _project_root.parent  # ClaudeCodeWork/
@@ -65,4 +82,14 @@ def validate_gemini_config() -> list[str]:
     errors = []
     if not GOOGLE_API_KEY:
         errors.append("GOOGLE_API_KEY が設定されていません")
+    return errors
+
+
+def validate_moshimo_config() -> list[str]:
+    """もしもアフィリエイト設定のバリデーション。不足項目をリストで返す。"""
+    errors = []
+    if not MOSHIMO_AMAZON_AID:
+        errors.append("MOSHIMO_AMAZON_AID が設定されていません")
+    if not MOSHIMO_RAKUTEN_AID:
+        errors.append("MOSHIMO_RAKUTEN_AID が設定されていません")
     return errors

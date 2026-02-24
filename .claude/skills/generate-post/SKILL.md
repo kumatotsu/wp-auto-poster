@@ -100,11 +100,11 @@ Task(
 )
 ```
 
-完了後に `article.html` と `image_requests.json` が生成されることを確認する。
+完了後に `article.html`、`image_requests.json`、`affiliate_requests.json` が生成されることを確認する。
 
-### Step 3: 画像生成とSEOレビュー（並列実行）
+### Step 3: 画像生成・SEOレビュー・アフィリエイトリンク生成（並列実行）
 
-以下の2つのタスクをTaskツールで**同時に**起動する（1つのメッセージ内で2つのTask呼び出し）。
+以下の3つのタスクをTaskツールで**同時に**起動する（1つのメッセージ内で3つのTask呼び出し）。
 
 **画像生成タスク:**
 ```
@@ -130,7 +130,20 @@ Task(
 )
 ```
 
-両方の完了を待つ。
+**アフィリエイトリンク生成タスク:**
+```
+Task(
+  subagent_type="wp-affiliate-linker",
+  prompt="書籍のアフィリエイトリンクを生成してください。
+    リクエストファイル: drafts/{slug}/affiliate_requests.json
+    出力先: drafts/{slug}/
+    結果ファイル: drafts/{slug}/affiliate_links.json
+    HTMLファイル: drafts/{slug}/affiliate_section.html",
+  description="アフィリエイトリンク生成"
+)
+```
+
+3つすべての完了を待つ。
 
 ### Step 4: WordPress下書き投稿
 
@@ -153,6 +166,7 @@ Task(
 - WordPress下書きURL
 - 生成された画像の一覧（アイキャッチ、挿絵、図解）
 - SEOスコア（タイトル文字数、メタディスクリプション文字数、キーワード密度）
+- アフィリエイトリンク情報（挿入された書籍名、リンク数）
 - 次のアクション:「WordPress管理画面で内容を確認し、問題なければ『公開』ボタンを押してください」
 
 ## エラーハンドリング

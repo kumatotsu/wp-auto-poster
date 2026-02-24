@@ -566,6 +566,20 @@ class WordPressClient:
             content = f.read()
 
         content = _replace_image_placeholders(content, image_map)
+
+        # ── 3.5. アフィリエイトプレースホルダーを置換 ──
+        affiliate_section_file = draft_path / "affiliate_section.html"
+        if affiliate_section_file.exists():
+            with open(affiliate_section_file, "r", encoding="utf-8") as f:
+                affiliate_html = f.read()
+            if affiliate_html.strip():
+                content = _replace_affiliate_placeholders(content, affiliate_html)
+                print(f"  アフィリエイトリンク挿入完了")
+            else:
+                content = _replace_affiliate_placeholders(content, "")
+        else:
+            content = _replace_affiliate_placeholders(content, "")
+
         print(f"\n記事本文: {len(content)} 文字")
 
         # ── 4. カテゴリ・タグのID解決 ──
@@ -786,6 +800,21 @@ class WordPressClient:
         # <!-- IMAGE: {image_id} --> 形式のプレースホルダーを置換
         content = _replace_image_placeholders(content, image_map)
 
+        # ── 3.5. アフィリエイトプレースホルダーを置換 ──
+        affiliate_section_file = draft_path / "affiliate_section.html"
+        if affiliate_section_file.exists():
+            with open(affiliate_section_file, "r", encoding="utf-8") as f:
+                affiliate_html = f.read()
+            if affiliate_html.strip():
+                content = _replace_affiliate_placeholders(content, affiliate_html)
+                print(f"  アフィリエイトリンク挿入完了")
+            else:
+                content = _replace_affiliate_placeholders(content, "")
+                print(f"  アフィリエイトリンク: なし（空ファイル）")
+        else:
+            # affiliate_section.htmlがない場合、プレースホルダーを削除
+            content = _replace_affiliate_placeholders(content, "")
+
         print(f"\n記事本文: {len(content)} 文字")
 
         # ── 4. カテゴリ・タグのID解決 ──
@@ -905,6 +934,39 @@ def _find_image_info(image_results: dict, filename: str) -> dict:
                 return result
 
     return {}
+
+
+def _replace_affiliate_placeholders(content: str, affiliate_section_html: str) -> str:
+    """
+    記事HTML内のアフィリエイトプレースホルダーを実際のHTMLに置換する。
+
+    プレースホルダー形式:
+        <!-- AFFILIATE_BOOKS -->
+
+    Args:
+        content: 記事HTML
+        affiliate_section_html: 挿入するアフィリエイトセクションのHTML
+
+    Returns:
+        str: 置換後の記事HTML
+    """
+    import re
+
+    placeholder_pattern = r'<!-- AFFILIATE_BOOKS -->'
+
+    if not affiliate_section_html or not affiliate_section_html.strip():
+        # アフィリエイトHTMLが空の場合、プレースホルダーを削除
+        result = re.sub(placeholder_pattern, '', content)
+        return result
+
+    # プレースホルダーを実際のHTMLに置換
+    result = re.sub(placeholder_pattern, affiliate_section_html, content)
+
+    if result == content and '<!-- AFFILIATE_BOOKS -->' in content:
+        # 正規表現で置換できなかった場合のフォールバック
+        result = content.replace('<!-- AFFILIATE_BOOKS -->', affiliate_section_html)
+
+    return result
 
 
 def _replace_image_placeholders(content: str, image_map: dict) -> str:
