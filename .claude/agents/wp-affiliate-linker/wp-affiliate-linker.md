@@ -108,7 +108,7 @@ affiliate_linker.py を実行してHTMLを生成する。
 
 ```bash
 cd /Users/totsu00/ClaudeCodeWork/wp-auto-poster
-uv run python lib/affiliate_linker.py \
+/Users/totsu00/.local/bin/uv run python lib/affiliate_linker.py \
   --request ../drafts/{slug}/affiliate_links.json \
   --output ../drafts/{slug}/affiliate_section.html
 ```

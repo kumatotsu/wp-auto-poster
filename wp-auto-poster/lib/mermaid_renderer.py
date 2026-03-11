@@ -248,7 +248,7 @@ class MermaidRenderer:
     def render_from_requests(
         self, requests_path: str, output_dir: str
     ) -> list[dict]:
-        """image_requests.json の diagrams セクションからMermaid図解を一括生成する。
+        """image_requests.json の diagrams セクション、またはトップレベル配列からMermaid図解を一括生成する。
 
         Args:
             requests_path: image_requests.json のパス
@@ -268,9 +268,16 @@ class MermaidRenderer:
         with open(requests_path, "r", encoding="utf-8") as f:
             data = json.load(f)
 
-        diagrams = data.get("diagrams", [])
+        # 配列形式またはオブジェクト形式の両方に対応
+        if isinstance(data, list):
+            # トップレベルが配列の場合、typeが "mermaid" の要素を抽出
+            diagrams = [item for item in data if item.get("type") == "mermaid"]
+        else:
+            # オブジェクト形式の場合、diagrams キーを探す
+            diagrams = data.get("diagrams", [])
+
         if not diagrams:
-            logger.warning("diagrams セクションが空です: %s", requests_path)
+            logger.warning("Mermaid diagrams が見つかりません: %s", requests_path)
             return []
 
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -302,8 +309,15 @@ class MermaidRenderer:
                 logger.info("diagram %s: 生成成功 -> %s", diagram_id, rendered_path)
             except RuntimeError as e:
                 logger.error("diagram %s: 生成失敗 - %s", diagram_id, e)
+                results.append({
+                    "id": diagram_id,
+                    "path": None,
+                    "error": str(e)[:200],
+                    "alt": alt,
+                    "caption": caption,
+                })
 
-        logger.info("一括生成完了: %d/%d 件成功", len(results), len(diagrams))
+        logger.info("一括生成完了: %d/%d 件成功", len([r for r in results if r.get('path')]), len(diagrams))
         return results
 
 
@@ -399,7 +413,10 @@ def main():
         results = renderer.render_from_requests(args.request, args.output)
         print(f"一括変換完了: {len(results)} 件の図解を生成しました")
         for r in results:
-            print(f"  {r['id']}: {r['path']}")
+            path_str = r.get('path', 'Failed')
+            if r.get('error'):
+                path_str += f" (Error: {r['error'][:50]})"
+            print(f"  {r['id']}: {path_str}")
         return
 
     if args.input:

@@ -865,7 +865,7 @@ class WordPressClient:
 # ユーティリティ関数
 # ──────────────────────────────────────────────
 
-def _find_image_info(image_results: dict, filename: str) -> dict:
+def _find_image_info(image_results, filename: str) -> dict:
     """
     image_results.json から画像ファイル名に対応する情報を検索する。
 
@@ -889,6 +889,28 @@ def _find_image_info(image_results: dict, filename: str) -> dict:
         dict: 画像情報。見つからなければ空のdict
     """
     from pathlib import Path as _Path
+
+    # ── リスト形式の場合 ──
+    if isinstance(image_results, list):
+        for item in image_results:
+            if not isinstance(item, dict):
+                continue
+            # path フィールドでマッチ
+            item_path = item.get("path", "")
+            if item_path and (_Path(item_path).name == filename or item_path == filename):
+                result = dict(item)
+                result["filename"] = filename
+                return result
+            # id フィールド（拡張子なし）でマッチ
+            if item.get("id") and filename.startswith(item["id"]):
+                result = dict(item)
+                result["filename"] = filename
+                return result
+        return {}
+
+    # 以下は dict 形式の処理
+    if not isinstance(image_results, dict):
+        return {}
 
     # ── 新形式: eyecatch ──
     eyecatch = image_results.get("eyecatch")

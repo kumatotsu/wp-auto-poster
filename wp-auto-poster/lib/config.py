@@ -28,11 +28,11 @@ WP_REST_BASE: str = f"{WP_URL}/wp-json/wp/v2"
 GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
 
 # 画像生成モデル設定
-EYECATCH_MODEL: str = "gemini-3-pro-image-preview"
+EYECATCH_MODEL: str = "gemini-3.1-flash-image-preview"
 EYECATCH_SIZE: str = "2K"
 EYECATCH_ASPECT: str = "16:9"
 
-ILLUSTRATION_MODEL: str = "gemini-2.5-flash-image"
+ILLUSTRATION_MODEL: str = "gemini-3.1-flash-image-preview"
 ILLUSTRATION_ASPECT: str = "4:3"
 
 # ──────────────────────────────────────────────
