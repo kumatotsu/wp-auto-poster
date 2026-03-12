@@ -1,12 +1,16 @@
 """
 Gemini API 使用量トラッカー
 
-画像生成ごとにコストをローカルファイルで記録・集計する。
-月次コストが予算に近づいた場合に警告し、超過時はプロンプト出力のみに切り替える判定を行う。
+実際の請求額は https://aistudio.google.com/spend で確認できる（円建て）。
+このスクリプトは:
+  - 画像生成ごとの概算コストをローカルに記録（枚数ベース）
+  - 実際のGoogle請求額（円）を手動記録できる
+  - 月次予算超過の場合に API 生成スキップを指示する
 
 使用方法:
-    python lib/usage_tracker.py           # 今月の使用量を表示
-    python lib/usage_tracker.py --reset   # 今月の記録をリセット
+    python lib/usage_tracker.py                    # 今月の状況を表示
+    python lib/usage_tracker.py --record 147       # 実績額を手動記録（円）
+    python lib/usage_tracker.py --reset            # 今月の推定記録をリセット
 """
 
 import argparse
@@ -17,25 +21,25 @@ from pathlib import Path
 from typing import Optional
 
 # ──────────────────────────────────────────────
-# コスト定数 (USD, 2026年3月時点)
+# 概算コスト定数（円）
+# USD価格 × 150円/USD の近似値
+# 実際の請求は https://aistudio.google.com/spend で確認すること
 # ──────────────────────────────────────────────
-COST_TABLE = {
-    ("eyecatch", "1K"):        0.067,
-    ("eyecatch", "2K"):        0.101,
-    ("eyecatch", "4K"):        0.151,
-    ("illustration", None):    0.067,  # サイズ未指定 → 1K相当
-    ("illustration", "1K"):    0.067,
-    ("illustration", "2K"):    0.101,
+COST_TABLE_JPY = {
+    ("eyecatch",      "1K"): 10,
+    ("eyecatch",      "2K"): 15,
+    ("eyecatch",      "4K"): 23,
+    ("illustration",  None): 10,
+    ("illustration",  "1K"): 10,
+    ("illustration",  "2K"): 15,
 }
 
-# 月次予算
-MONTHLY_BUDGET_USD: float = 10.0
+MONTHLY_BUDGET_JPY: int = 1500   # 円（≈ $10）
+WARNING_THRESHOLD:  float = 0.80  # 80% で警告
+SKIP_THRESHOLD:     float = 1.00  # 100% で生成スキップ
 
-# 警告閾値（予算の何%で警告するか）
-WARNING_THRESHOLD: float = 0.80   # 80%
-SKIP_THRESHOLD: float    = 1.00   # 100%（超過したら生成スキップ）
+SPEND_URL = "https://aistudio.google.com/spend"
 
-# 使用量ログの保存先（ユーザーホームの .claude/ 以下で永続管理）
 _LOG_PATH = Path.home() / ".claude" / "projects" / "gemini_usage.json"
 
 
@@ -50,35 +54,32 @@ class UsageTracker:
         self.log_path = log_path or _LOG_PATH
         self._ensure_log_file()
 
-    # ── 内部ユーティリティ ──────────────────────
-
     def _ensure_log_file(self) -> None:
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
         if not self.log_path.exists():
-            self.log_path.write_text(json.dumps({"records": []}, indent=2))
+            self.log_path.write_text(
+                json.dumps({"records": [], "actual_costs": {}}, indent=2)
+            )
 
     def _load(self) -> dict:
-        return json.loads(self.log_path.read_text(encoding="utf-8"))
+        data = json.loads(self.log_path.read_text(encoding="utf-8"))
+        data.setdefault("actual_costs", {})
+        return data
 
     def _save(self, data: dict) -> None:
         self.log_path.write_text(
             json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
         )
 
-    # ── 公開メソッド ────────────────────────────
+    def _month_key(self, year: int, month: int) -> str:
+        return f"{year}-{month:02d}"
 
-    def record(self, image_type: str, model: str, size: Optional[str] = None) -> float:
-        """画像1枚の生成コストを記録し、コスト (USD) を返す。
+    # ── 記録 ──────────────────────────────────
 
-        Args:
-            image_type: "eyecatch" または "illustration"
-            model: 使用モデル名（ログ用）
-            size: 画像サイズ文字列（"1K", "2K" など）
-
-        Returns:
-            記録したコスト (USD)
-        """
-        cost = COST_TABLE.get((image_type, size)) or COST_TABLE.get((image_type, None), 0.067)
+    def record(self, image_type: str, model: str, size: Optional[str] = None) -> int:
+        """画像1枚の生成を記録し、概算コスト（円）を返す。"""
+        cost = COST_TABLE_JPY.get((image_type, size)) \
+            or COST_TABLE_JPY.get((image_type, None), 10)
 
         data = self._load()
         data["records"].append({
@@ -86,72 +87,83 @@ class UsageTracker:
             "image_type": image_type,
             "model":      model,
             "size":       size,
-            "cost_usd":   cost,
+            "cost_jpy":   cost,
         })
         self._save(data)
         return cost
+
+    def record_actual(self, amount_jpy: int, year: int = None, month: int = None) -> None:
+        """Google の請求画面で確認した実績額（円）を記録する。"""
+        now = datetime.now()
+        key = self._month_key(year or now.year, month or now.month)
+
+        data = self._load()
+        data["actual_costs"][key] = {
+            "amount_jpy":   amount_jpy,
+            "recorded_at":  datetime.now().isoformat(),
+        }
+        self._save(data)
+
+    # ── 集計 ──────────────────────────────────
 
     def get_monthly_stats(self, year: int = None, month: int = None) -> dict:
         """指定月の使用量統計を返す。
 
         Returns:
-            dict:
-                total_cost_usd          今月累計コスト
-                total_images            生成枚数
-                projected_monthly_usd   月末まで同ペースの場合の予測コスト
-                budget_usd              月次予算
-                budget_used_pct         予算消費率 (%)
-                records                 レコード一覧
+            estimated_jpy   画像枚数ベースの概算コスト（円）
+            actual_jpy      手動記録した実績額（None = 未記録）
+            display_jpy     表示用コスト（実績優先、なければ概算）
+            total_images    生成枚数
+            projected_jpy   月末予測（概算ベース）
+            budget_jpy      月次予算
+            budget_used_pct 予算消費率 (%)
         """
-        now = datetime.now()
+        now   = datetime.now()
         year  = year  or now.year
         month = month or now.month
+        key   = self._month_key(year, month)
 
         data = self._load()
+
         monthly = [
             r for r in data["records"]
-            if (
-                datetime.fromisoformat(r["date"]).year  == year and
-                datetime.fromisoformat(r["date"]).month == month
-            )
+            if datetime.fromisoformat(r["date"]).year  == year
+            and datetime.fromisoformat(r["date"]).month == month
         ]
 
-        total_cost   = sum(r["cost_usd"] for r in monthly)
+        estimated = sum(r.get("cost_jpy", 10) for r in monthly)
         total_images = len(monthly)
 
-        # 月末予測: 経過日数ベースで線形外挿（月初は当日ぶんのみで計算）
-        elapsed_days = max(now.day, 1)
-        days_in_month = 30  # 簡略近似
-        projected = (total_cost / elapsed_days) * days_in_month if elapsed_days > 0 else 0.0
+        elapsed_days  = max(now.day, 1)
+        projected = int((estimated / elapsed_days) * 30) if elapsed_days > 0 else 0
+
+        actual_entry = data["actual_costs"].get(key)
+        actual_jpy   = actual_entry["amount_jpy"] if actual_entry else None
+        display_jpy  = actual_jpy if actual_jpy is not None else estimated
 
         return {
-            "year":                    year,
-            "month":                   month,
-            "total_cost_usd":          round(total_cost,   4),
-            "total_images":            total_images,
-            "projected_monthly_usd":   round(projected,    4),
-            "budget_usd":              MONTHLY_BUDGET_USD,
-            "budget_used_pct":         round(total_cost / MONTHLY_BUDGET_USD * 100, 1),
-            "records":                 monthly,
+            "year":          year,
+            "month":         month,
+            "estimated_jpy": estimated,
+            "actual_jpy":    actual_jpy,
+            "display_jpy":   display_jpy,
+            "total_images":  total_images,
+            "projected_jpy": projected,
+            "budget_jpy":    MONTHLY_BUDGET_JPY,
+            "budget_used_pct": round(display_jpy / MONTHLY_BUDGET_JPY * 100, 1),
         }
 
     def check_budget(self) -> dict:
-        """現在の予算状況を返す。生成可否の判定フラグを含む。
-
-        Returns:
-            dict:
-                ...get_monthly_stats() の全フィールド...
-                should_warn: True なら警告を表示すべき
-                should_skip: True なら API 生成をスキップしてプロンプト出力のみにすべき
-        """
+        """現在の予算状況を返す。生成可否の判定フラグを含む。"""
         stats = self.get_monthly_stats()
-        used  = stats["total_cost_usd"]
-        stats["should_warn"] = used >= MONTHLY_BUDGET_USD * WARNING_THRESHOLD
-        stats["should_skip"] = used >= MONTHLY_BUDGET_USD * SKIP_THRESHOLD
+        amt   = stats["display_jpy"]
+        stats["should_warn"] = amt >= MONTHLY_BUDGET_JPY * WARNING_THRESHOLD
+        stats["should_skip"] = amt >= MONTHLY_BUDGET_JPY * SKIP_THRESHOLD
+        stats["spend_url"]   = SPEND_URL
         return stats
 
     def reset_month(self, year: int = None, month: int = None) -> int:
-        """指定月のレコードを削除し、削除件数を返す。"""
+        """指定月の推定記録（画像ログ）を削除する。実績額は保持。"""
         now   = datetime.now()
         year  = year  or now.year
         month = month or now.month
@@ -171,35 +183,41 @@ class UsageTracker:
 
 
 # ──────────────────────────────────────────────
-# CLI インターフェース
+# CLI
 # ──────────────────────────────────────────────
 
 def _print_stats(stats: dict) -> None:
-    """統計情報を人間が読みやすい形式で標準出力に出力する。"""
-    print("=" * 50)
-    print(f"  Gemini API 使用量 ({stats['year']}/{stats['month']:02d})")
-    print("=" * 50)
-    print(f"  生成枚数       : {stats['total_images']} 枚")
-    print(f"  今月累計コスト : ${stats['total_cost_usd']:.4f}")
-    print(f"  月末予測コスト : ${stats['projected_monthly_usd']:.4f}")
-    print(f"  月次予算       : ${stats['budget_usd']:.2f}")
-    print(f"  予算消費率     : {stats['budget_used_pct']:.1f}%")
+    year, month = stats["year"], stats["month"]
+    print("=" * 52)
+    print(f"  Gemini API 使用量  {year}/{month:02d}")
+    print("=" * 52)
+    print(f"  生成枚数        : {stats['total_images']} 枚")
+    if stats["actual_jpy"] is not None:
+        print(f"  実績額（確認済）: ¥{stats['actual_jpy']:,}")
+        print(f"  概算額          : ¥{stats['estimated_jpy']:,}（参考）")
+    else:
+        print(f"  概算コスト      : ¥{stats['estimated_jpy']:,}")
+        print(f"  月末予測        : ¥{stats['projected_jpy']:,}（概算）")
+        print(f"  ※ 実績は {SPEND_URL} で確認できます")
+    print(f"  月次予算        : ¥{stats['budget_jpy']:,}")
+    print(f"  予算消費率      : {stats['budget_used_pct']:.1f}%")
 
     if stats.get("should_skip"):
-        print("\n  ⚠️  予算超過: 画像生成をスキップしてプロンプト出力のみに切り替えます")
+        print(f"\n  ⚠️  予算超過: API 生成をスキップしてプロンプト出力のみに切り替えます")
     elif stats.get("should_warn"):
-        print(f"\n  ⚠️  警告: 予算の {WARNING_THRESHOLD*100:.0f}% を超えています")
-
-    print("=" * 50)
+        print(f"\n  ⚠️  警告: 予算の {int(WARNING_THRESHOLD*100)}% を超えています")
+    print("=" * 52)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Gemini API 使用量トラッカー",
+    parser = argparse.ArgumentParser(description="Gemini API 使用量トラッカー")
+    parser.add_argument(
+        "--record", type=int, metavar="AMOUNT_JPY",
+        help="Google の請求画面で確認した今月の実績額（円）を記録する",
     )
     parser.add_argument(
         "--reset", action="store_true",
-        help="今月の記録をリセットする",
+        help="今月の推定記録（画像ログ）をリセットする（実績額は保持）",
     )
     parser.add_argument(
         "--json", action="store_true",
@@ -209,21 +227,25 @@ def main() -> None:
 
     tracker = UsageTracker()
 
+    if args.record is not None:
+        tracker.record_actual(args.record)
+        print(f"今月の実績額を ¥{args.record:,} として記録しました。")
+        print(f"（確認元: {SPEND_URL}）")
+        return
+
     if args.reset:
         deleted = tracker.reset_month()
-        print(f"今月のレコードを {deleted} 件削除しました。")
+        print(f"今月の推定記録を {deleted} 件削除しました。（実績額は保持）")
         return
 
     stats = tracker.check_budget()
 
     if args.json:
-        # スクリプトから呼び出す場合は JSON を標準出力に出力
         print(json.dumps(stats, ensure_ascii=False))
         return
 
     _print_stats(stats)
 
-    # 終了コード: should_skip なら 2、should_warn なら 1、正常なら 0
     if stats["should_skip"]:
         sys.exit(2)
     if stats["should_warn"]:
