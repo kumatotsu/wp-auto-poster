@@ -1,0 +1,14 @@
+{
+  "eyecatch": {
+    "path": "output/eyecatch.png",
+    "alt": "ブログのアイキャッチ画像: ノートPCの画面にMarkdownファイル（CLAUDE.md）が開かれており、プロジェクトのルールや指示が整理されたテキストが表示されている。画面の横にはAIアシスタント"
+  },
+  "illustrations": [
+    {
+      "id": "illust_1",
+      "path": "output/illustration_1.png",
+      "alt": "CLAUDE.md を使った Claude Code プロジェクト設定の概念図",
+      "caption": "CLAUDE.mdを配置するだけでClaude Codeがプロジェクトを記憶する"
+    }
+  ]
+}

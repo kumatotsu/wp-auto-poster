@@ -1,0 +1,41 @@
+{
+  "title": "CLAUDE.md 書き方完全ガイド｜テンプレート・サンプル付き【2026年】",
+  "slug": "claude-md-writing-guide",
+  "meta_description": "Claude Code の設定ファイル CLAUDE.md の書き方を徹底解説。書き方の5つのルールに加え、React・Python・WordPress 用テンプレートとサンプルコードを掲載。グローバル設定からプロジェクト固有の Claude Code プロジェクト設定まで実践的に説明します。",
+  "focus_keyword": "CLAUDE.md 書き方",
+  "categories": ["生成AI"],
+  "tags": ["CLAUDE.md", "Claude Code", "プロジェクト設定", "テンプレート", "Claude"],
+  "yoast_seo": {
+    "_yoast_wpseo_title": "%%title%% | %%sitename%%",
+    "_yoast_wpseo_metadesc": "Claude Code の設定ファイル CLAUDE.md の書き方を徹底解説。書き方の5つのルールに加え、React・Python・WordPress 用テンプレートとサンプルコードを掲載。グローバル設定からプロジェクト固有の Claude Code プロジェクト設定まで実践的に説明します。",
+    "_yoast_wpseo_focuskw": "CLAUDE.md 書き方"
+  },
+  "seo_score": {
+    "title_length": 37,
+    "meta_length": 124,
+    "keyword_density": "1.8%",
+    "h2_count": 7,
+    "h3_count": 14,
+    "word_count": 4800,
+    "internal_links_count": 4,
+    "images_with_keyword_alt": 1,
+    "keyword_in_intro": true,
+    "keyword_in_h2": true,
+    "transition_word_ratio": "33%",
+    "long_sentence_ratio": "22%",
+    "consecutive_same_start": 0
+  },
+  "article_modifications": [
+    "導入文の内部リンクに「Claude Codeインストール方法と初期設定ガイド」へのリンクを追加（内部リンク計4箇所に増強）",
+    "ローカル設定セクションの内部リンクに「Claude Codeの基本コマンド一覧」へのリンクを追加",
+    "H2「効果的な CLAUDE.md の書き方5つのルール」冒頭の表現を「CLAUDE.md の書き方として」に変更（キーフレーズ強化）",
+    "H2「グローバル CLAUDE.md とプロジェクト CLAUDE.md の使い分け」冒頭を「CLAUDE.md の書き方を実践する上で」に変更（キーフレーズ強化）",
+    "Before/After 比較セクション冒頭に「CLAUDE.md の書き方を実際に適用した場合」を追加（キーフレーズ強化）",
+    "転換語を8箇所追加：「そのため」「加えて」「具体的には」「一方で」「要するに」「このように」「ただし」「なお」",
+    "「指示に理由を添える」段落に「具体的には」を追加",
+    "ルール4段落に「そのため」を追加",
+    "ルール5段落に「一方で」を追加",
+    "グローバル設定段落に「特に」「要するに」を追加",
+    "Before/After 結論段落に「このように」「ただし」を追加"
+  ]
+}

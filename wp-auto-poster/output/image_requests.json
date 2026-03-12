@@ -1,0 +1,23 @@
+{
+  "eyecatch": {
+    "prompt": "ブログのアイキャッチ画像: ノートPCの画面にMarkdownファイル（CLAUDE.md）が開かれており、プロジェクトのルールや指示が整理されたテキストが表示されている。画面の横にはAIアシスタントのシンボルアイコンが光り、ファイルとAIが繋がっているイメージ。モダンなダークテーマのエディタ画面。青と緑のグラデーション背景。",
+    "style": "モダンでクリーンなデザイン、青と白基調、テクノロジー感"
+  },
+  "illustrations": [
+    {
+      "id": "illust_1",
+      "prompt": "CLAUDE.mdファイルがプロジェクトフォルダに配置され、Claude Codeがそれを読み込む様子を表した概念図。左側にフォルダツリー（project/CLAUDE.md が強調表示）、右側にAIエージェントのアイコンが矢印でつながれている。矢印の上に「自動読み込み」の文字。シンプルでわかりやすいフラットデザイン。青・白・グレーの配色。",
+      "alt": "CLAUDE.md を使った Claude Code プロジェクト設定の概念図",
+      "caption": "CLAUDE.mdを配置するだけでClaude Codeがプロジェクトを記憶する"
+    }
+  ],
+  "diagrams": [
+    {
+      "id": "diagram_1",
+      "mermaid_code": "flowchart TD\n    A[\"~/.claude/CLAUDE.md\\nグローバル設定\"] -->|全プロジェクトに適用| B[\"./CLAUDE.md\\nプロジェクト設定\"]\n    B -->|チームで git 共有| C[\"./frontend/CLAUDE.md\\nフロントエンド固有\"]\n    B -->|チームで git 共有| D[\"./backend/CLAUDE.md\\nバックエンド固有\"]\n    E[\"./CLAUDE.local.md\\nローカル設定\"] -->|個人用・gitignore| B\n    style A fill:#4A90D9,color:#fff\n    style B fill:#5BA85A,color:#fff\n    style E fill:#E8A838,color:#fff\n    style C fill:#9B59B6,color:#fff\n    style D fill:#9B59B6,color:#fff",
+      "alt": "CLAUDE.md のグローバルとプロジェクト設定の2層構造を示す図",
+      "caption": "グローバル・プロジェクト・フォルダ別の3層構造と優先順位"
+    }
+  ],
+  "screenshots": []
+}

@@ -1,0 +1,609 @@
+<!-- wp:paragraph -->
+<p>CLAUDE.md の書き方を知りたい方へ。Claude Code を使い始めた頃、セッションのたびに同じ指示を繰り返す非効率さに悩んでいました。「またコーディング規約を説明するのか」「またプロジェクト構成を伝えるのか」。そんな問題を根本から解決するのが CLAUDE.md です。この記事では、CLAUDE.md の基本から用途別テンプレート、効果的な書き方の5つのルールまで、実体験を交えて徹底解説します。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>関連情報として、<a href="https://m-totsu.com/category/it%e6%8a%80%e8%a1%93/">IT技術カテゴリの記事一覧</a>もあわせてご覧ください。また、<a href="https://www.m-totsu.com/843/">Claude Codeインストール方法と初期設定ガイド</a>では、CLAUDE.md を活用するための環境構築手順を詳しく解説しています。</p>
+<!-- /wp:paragraph -->
+
+<!-- IMAGE: eyecatch -->
+
+<!-- wp:heading {"level":2} -->
+<h2 class="wp-block-heading">CLAUDE.md とは？なぜ重要なのか</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>CLAUDE.md とは、Claude Code がセッション開始時に自動で読み込む「プロジェクトメモリファイル」です。Markdown 形式で書かれたこのファイルをプロジェクトルートに置くだけで、Claude はそこに書かれた指示をすべてのセッションで記憶した状態でスタートします。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>筆者がこのファイルを設定しようと思ったきっかけは、指示のゆらぎを防ぎたかったからです。Claude Code を使い始めた当初、セッションのたびにコーディング規約やプロジェクトの構成を最初から説明し直していました。「TypeScript の strict モードを使ってください」「テストは Jest で書いてください」。そういった指示を毎回タイプするのは非常に手間でした。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>つまり、CLAUDE.md に一度書いてしまえば、次のセッションからは一切説明不要になります。まるでプロジェクトのルールをすべて把握した新メンバーが初日から即戦力で動いてくれるような感覚です。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":3} -->
+<h3 class="wp-block-heading">CLAUDE.md が解決する3つの問題</h3>
+<!-- /wp:heading -->
+
+<!-- wp:list -->
+<ul class="wp-block-list">
+<li><strong>指示の繰り返し問題</strong>：毎セッションで同じコーディング規約やコマンドを説明しなくて済む</li>
+<li><strong>一貫性の欠如</strong>：チームメンバー全員が同じルールで Claude を動かせる</li>
+<li><strong>コンテキスト消費の無駄</strong>：説明に使うトークンを削減し、本質的な作業に集中できる</li>
+</ul>
+<!-- /wp:list -->
+
+<!-- wp:heading {"level":3} -->
+<h3 class="wp-block-heading">CLAUDE.md の読み込みタイミングを理解する</h3>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Claude Code はセッション開始時にプロジェクトルートの CLAUDE.md を自動読み込みします。また、サブディレクトリに置いた CLAUDE.md は、そのディレクトリ内のファイルを Claude が読み取った時点で遅延読み込みされます。つまり、`frontend/CLAUDE.md` はフロントエンドのコードを触り始めたタイミングで初めて読み込まれます。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>読み込まれているかどうか確認するには、セッション内で <code>/memory</code> コマンドを実行します。現在アクティブなすべてのメモリファイルが一覧表示されます。また、Claude に直接「あなたの CLAUDE.md には何が書いてありますか？」と質問する方法も有効です。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>筆者自身、設定した後に「本当に読み込まれているのか？」と不安になった経験があります。そこで実際に <code>/memory</code> コマンドを打ってみたところ、ファイルパスと内容が表示され、読み込まれていることを確認できました。これを知ってから、CLAUDE.md の運用に自信を持てるようになりました。</p>
+<!-- /wp:paragraph -->
+
+<!-- IMAGE: illust_1 alt="CLAUDE.md 書き方と Claude Code プロジェクト設定の概念図" caption="CLAUDE.mdを配置するだけでClaude Codeがプロジェクトを記憶する" -->
+
+<!-- wp:heading {"level":2} -->
+<h2 class="wp-block-heading">CLAUDE.md の基本構成と配置場所</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>CLAUDE.md には「グローバル」「プロジェクト」「フォルダ別」の3つのレベルがあります。それぞれの配置場所と用途を理解することで、より効果的に活用できます。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":3} -->
+<h3 class="wp-block-heading">3層の配置構造</h3>
+<!-- /wp:heading -->
+
+<!-- IMAGE: diagram_1 alt="CLAUDE.md の書き方における3層構造（グローバル・プロジェクト・フォルダ別）を示す図" caption="グローバル・プロジェクト・フォルダ別の3層構造" -->
+
+<!-- wp:code -->
+<pre class="wp-block-code"><code>~/.claude/CLAUDE.md          ← グローバル設定（全プロジェクト共通）
+
+project/
+├── CLAUDE.md                ← プロジェクト設定（チームで共有・git管理）
+├── CLAUDE.local.md          ← ローカル設定（個人用・gitignore対象）
+├── frontend/
+│   └── CLAUDE.md            ← フロントエンド固有設定
+└── backend/
+    └── CLAUDE.md            ← バックエンド固有設定</code></pre>
+<!-- /wp:code -->
+
+<!-- wp:paragraph -->
+<p>優先順位は「ローカル &gt; プロジェクト &gt; グローバル」の順です。つまり、同じ設定が複数のファイルに書かれている場合、より具体的なスコープのものが優先されます。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":3} -->
+<h3 class="wp-block-heading">各レベルに書くべき内容</h3>
+<!-- /wp:heading -->
+
+<!-- wp:table -->
+<figure class="wp-block-table"><table><thead><tr><th>レベル</th><th>場所</th><th>書くべき内容</th><th>git 管理</th></tr></thead><tbody><tr><td>グローバル</td><td>~/.claude/CLAUDE.md</td><td>言語設定、出力スタイル、個人的な癖</td><td>なし（個人設定）</td></tr><tr><td>プロジェクト</td><td>./CLAUDE.md</td><td>技術スタック、コマンド、アーキテクチャ</td><td>あり（チーム共有）</td></tr><tr><td>ローカル</td><td>./CLAUDE.local.md</td><td>個人の環境変数、マシン固有の設定</td><td>なし（.gitignore 推奨）</td></tr></tbody></table></figure>
+<!-- /wp:table -->
+
+<!-- wp:heading {"level":3} -->
+<h3 class="wp-block-heading">/init コマンドで初期ファイルを自動生成する</h3>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>CLAUDE.md を一から書くのが難しいと感じる場合は、<code>/init</code> コマンドが便利です。Claude がプロジェクト構造を自動分析し、初期 CLAUDE.md を生成してくれます。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:code -->
+<pre class="wp-block-code"><code># プロジェクトディレクトリで Claude Code を起動
+cd /path/to/your/project
+claude
+
+# セッション内で /init を実行
+/init</code></pre>
+<!-- /wp:code -->
+
+<!-- wp:paragraph -->
+<p>ただし、<code>/init</code> の出力をそのまま使い続けるのはアンチパターンです。生成されたファイルを出発点にして、プロジェクト固有の情報を追記・整理するのが正しい使い方です。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":2} -->
+<h2 class="wp-block-heading">効果的な CLAUDE.md の書き方5つのルール</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>CLAUDE.md の書き方として、押さえておくべきルールが5つあります。実際に試行錯誤を重ねた結果、以下のルールに従って書くと Claude の応答品質が大幅に上がることがわかりました。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":3} -->
+<h3 class="wp-block-heading">ルール1：「削除したら Claude が間違えるか」で取捨選択する</h3>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>CLAUDE.md に書く内容は、「この行を削除したら Claude が間違いを犯すか」という基準で判断します。Yes なら記述対象、No なら削除候補です。具体的には、以下のような情報を書くべきではありません。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:list -->
+<ul class="wp-block-list">
+<li>コードを読めば自明なこと（「Reactを使っています」など package.json を見ればわかること）</li>
+<li>言語の標準的な慣例（「関数にはコメントを書いてください」など一般的なベストプラクティス）</li>
+<li>頻繁に変わる情報（バージョン番号や担当者名など）</li>
+</ul>
+<!-- /wp:list -->
+
+<!-- wp:paragraph -->
+<p>一方で、以下は必ず記述すべき内容です。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:list -->
+<ul class="wp-block-list">
+<li>Claude が推測できないプロジェクト固有のコマンド（例：`npm run dev:mock` など特殊なスクリプト）</li>
+<li>デフォルトと異なるコードスタイルのルール（例：「`any` 型は絶対禁止」など意識的に選んだ制約）</li>
+<li>過去に Claude が繰り返し間違えた箇所（フィードバックループで積み上げていく）</li>
+</ul>
+<!-- /wp:list -->
+
+<!-- wp:heading {"level":3} -->
+<h3 class="wp-block-heading">ルール2：500行以内に収める</h3>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>公式ドキュメントでは、CLAUDE.md は約500行以内に収めることが推奨されています。長すぎると、Claude が指示の中から関連性の低い部分を無視する仕様があるためです。また、ファイルが短いほど Claude の遵守率が上がるというデータもあります。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>大規模プロジェクトで内容が増えてきた場合は、`.claude/rules/` ディレクトリにルールを分割して管理する方法が効果的です。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:code -->
+<pre class="wp-block-code"><code>.claude/
+└── rules/
+    ├── coding-style.md    ← コーディング規約
+    ├── testing.md         ← テスト方針
+    └── git-workflow.md    ← ブランチ・PR規約</code></pre>
+<!-- /wp:code -->
+
+<!-- wp:heading {"level":3} -->
+<h3 class="wp-block-heading">ルール3：WHY（理由）を必ず添える</h3>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>指示に理由を添えると、Claude が文脈を理解した上で判断できるようになります。具体的には、単に「`any` 型は禁止」と書くよりも、以下のように理由を明記する書き方の方が効果的です。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:code -->
+<pre class="wp-block-code"><code>## コーディング規約
+
+- TypeScript strict モードを使用（`any` 型は禁止）
+  - 理由：過去に implicit any 由来の本番バグが複数発生したため
+- named export を使用（default export は禁止）
+  - 理由：リファクタリング時のリネームを IDE が自動追跡できるようにするため</code></pre>
+<!-- /wp:code -->
+
+<!-- wp:paragraph -->
+<p>理由があることで、Claude は類似ケースでも適切に判断できます。これは特に例外的な判断が必要な場面で効いてきます。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":3} -->
+<h3 class="wp-block-heading">ルール4：フィードバックループで育てていく</h3>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>CLAUDE.md は「一度書いたら完成」ではありません。そのため、Claude が誤った提案をするたびに、その修正内容を CLAUDE.md に追記するフィードバックループが最も効果的な運用方法です。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>具体的には、同じ訂正を2回以上した場合はそれをルールとして追加します。加えて、数週間ごとに不要になった指示を見直して削除する「剪定」も大切です。肥大化を防ぐことで、重要なルールが埋もれにくくなります。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":3} -->
+<h3 class="wp-block-heading">ルール5：禁止事項には必ず代替手段を示す</h3>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>「〇〇はやらないでください」という禁止事項だけ書くのはアンチパターンです。一方で、代替手段を合わせて示すことで、Claude が正しい方向に進めるようになります。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:code -->
+<pre class="wp-block-code"><code>## 注意事項
+
+NG: console.log でのデバッグは禁止
+OK: console.log でのデバッグは禁止。代わりに logger.debug() を使用すること
+
+NG: fetch を直接使わない
+OK: fetch を直接使わない。代わりに src/lib/api.ts の apiClient を使うこと</code></pre>
+<!-- /wp:code -->
+
+<!-- wp:heading {"level":2} -->
+<h2 class="wp-block-heading">用途別 CLAUDE.md テンプレート集（React / Python / WordPress）</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>実際に使えるテンプレートを3種類紹介します。各テンプレートはそのままコピーして、プロジェクトに合わせて編集してください。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":3} -->
+<h3 class="wp-block-heading">React（TypeScript）プロジェクト用テンプレート</h3>
+<!-- /wp:heading -->
+
+<!-- wp:code -->
+<pre class="wp-block-code"><code># プロジェクト概要
+
+Eコマースサイトのフロントエンド。Next.js 15 + TypeScript + App Router 構成。
+
+## 技術スタック
+
+- Next.js 15（App Router）
+- TypeScript 5（strict モード）
+- Tailwind CSS v4
+- Tanstack Query（サーバー状態管理）
+- Vitest + Testing Library（テスト）
+
+## ディレクトリ構成
+
+| ディレクトリ | 役割 |
+|-------------|------|
+| src/app/ | App Router のページ・レイアウト |
+| src/components/ui/ | 汎用 UI コンポーネント |
+| src/components/features/ | 機能単位のコンポーネント |
+| src/hooks/ | カスタムフック |
+| src/lib/ | ユーティリティ・API クライアント |
+| src/types/ | TypeScript 型定義 |
+
+## よく使うコマンド
+
+- `pnpm dev`: 開発サーバー起動（ポート3000）
+- `pnpm test`: Vitest 実行
+- `pnpm test:e2e`: Playwright E2E テスト
+- `pnpm lint`: ESLint + TypeScript チェック
+- `pnpm build`: 本番ビルド
+
+## コーディング規約
+
+- `any` 型は禁止（理由：implicit any 由来の本番バグ防止）
+- named export を使用（default export 禁止）
+- コンポーネントはアロー関数で定義
+- CSS は Tailwind ユーティリティクラスのみ（インライン style 禁止）
+- サーバーコンポーネント優先、クライアントコンポーネントは最小限に
+
+## 注意事項
+
+- Next.js 15 ではデータ取得がデフォルトでキャッシュされない
+- fetch を直接使わず、src/lib/apiClient.ts を必ず経由すること
+- 環境変数は .env.local を参照（`.env` は git 管理対象外）</code></pre>
+<!-- /wp:code -->
+
+<!-- wp:heading {"level":3} -->
+<h3 class="wp-block-heading">Python（FastAPI / Django）プロジェクト用テンプレート</h3>
+<!-- /wp:heading -->
+
+<!-- wp:code -->
+<pre class="wp-block-code"><code># プロジェクト概要
+
+ユーザー管理 REST API。FastAPI + SQLAlchemy + PostgreSQL 構成。
+
+## 技術スタック
+
+- Python 3.12
+- FastAPI（非同期 API フレームワーク）
+- SQLAlchemy 2.0（ORM）
+- Alembic（マイグレーション）
+- uv（パッケージ管理）
+- Ruff（リント・フォーマット）
+- pytest（テスト）
+
+## ディレクトリ構成
+
+```
+src/
+├── api/           # ルーター・エンドポイント
+├── core/          # 設定・セキュリティ
+├── models/        # SQLAlchemy モデル
+├── schemas/       # Pydantic スキーマ
+├── services/      # ビジネスロジック
+└── tests/         # テスト
+```
+
+## よく使うコマンド
+
+- `uv run fastapi dev`: 開発サーバー起動
+- `uv run pytest`: テスト実行
+- `uv run ruff check .`: リント実行
+- `uv run ruff format .`: フォーマット実行
+- `uv run alembic upgrade head`: マイグレーション適用
+
+## コーディング規約
+
+- パッケージ管理は uv のみ使用（pip / poetry / conda は使わない）
+- Python コードの実行は `uv run` 経由（例：`uv run python script.py`）
+- 型アノテーションは必須（mypy strict モード相当）
+- すべての API エンドポイントは `async def` で定義
+- 依存性注入は `Annotated[Type, Depends()]` パターンを使用
+
+## 注意事項
+
+- データベースセッションは必ず `async with` で管理し、明示的にクローズ
+- 生 SQL は原則禁止。SQLAlchemy ORM を使用すること
+- 機密情報（APIキー等）は .env ファイルで管理し、コードに直書き禁止</code></pre>
+<!-- /wp:code -->
+
+<!-- wp:heading {"level":3} -->
+<h3 class="wp-block-heading">WordPress（PHP）プロジェクト用テンプレート</h3>
+<!-- /wp:heading -->
+
+<!-- wp:code -->
+<pre class="wp-block-code"><code># プロジェクト概要
+
+WordPress カスタムテーマおよびプラグイン開発プロジェクト。
+PHP 8.2 + Cocoon 子テーマ構成。
+
+## 技術スタック
+
+- WordPress 6.7
+- PHP 8.2
+- Cocoon 親テーマ（子テーマとして開発）
+- Gutenberg ブロックエディター
+- WP-CLI（コマンドライン操作）
+
+## ディレクトリ構成
+
+| ディレクトリ / ファイル | 役割 |
+|------------------------|------|
+| functions.php | テーマ機能の追加・フック定義 |
+| style.css | テーマメタ情報・グローバルスタイル |
+| templates/ | カスタムページテンプレート |
+| blocks/ | カスタムブロック定義 |
+| assets/ | JS・CSS・画像 |
+
+## よく使うコマンド
+
+- `wp server`: 開発サーバー起動
+- `wp plugin activate [name]`: プラグイン有効化
+- `wp cache flush`: キャッシュクリア
+- `wp post generate --count=10`: テスト投稿生成
+
+## コーディング規約
+
+- WordPress PHP コーディング規約に従う
+  - 括弧内にスペース：`function_name( $arg )`
+  - 配列は `array()` を使用（`[]` 表記は PHP 5.3 以降だが統一のため）
+  - Yoda 条件：`if ( true === $value )`
+- WordPress のデータサニタイズ関数を必ず使用（XSS 防止）
+  - 出力時：`esc_html()`, `esc_attr()`, `esc_url()`
+  - 保存時：`sanitize_text_field()`, `wp_kses_post()`
+- 直接 DB クエリは禁止。`WP_Query` や `$wpdb->prepare()` を使用
+
+## 注意事項
+
+- Cocoon 親テーマのファイルを直接編集しない（子テーマでオーバーライド）
+- プラグインの追加は必ず承認を取ること（不要な依存を避けるため）
+- wp-config.php には機密情報があるため、コードに取り込まない</code></pre>
+<!-- /wp:code -->
+
+<!-- wp:heading {"level":3} -->
+<h3 class="wp-block-heading">グローバル CLAUDE.md テンプレート（全プロジェクト共通設定）</h3>
+<!-- /wp:heading -->
+
+<!-- wp:code -->
+<pre class="wp-block-code"><code># 個人設定（グローバル）
+
+## 出力スタイル
+
+- 日本語で回答すること
+- コードの説明は日本語でコメントを入れること
+- 長い説明より、短い説明 + コード例を優先すること
+
+## コミットメッセージ
+
+- Conventional Commits 形式を使用
+  - feat: 新機能
+  - fix: バグ修正
+  - docs: ドキュメント
+  - refactor: リファクタリング
+- 1行目は50文字以内、日本語可
+
+## 作業スタイル
+
+- 大きな変更の前に必ず計画を提示し、承認を取ること
+- テストを書かずに機能実装を完了としない
+- エラーが発生した場合は根本原因を特定してから修正すること</code></pre>
+<!-- /wp:code -->
+
+<!-- wp:heading {"level":2} -->
+<h2 class="wp-block-heading">グローバル CLAUDE.md とプロジェクト CLAUDE.md の使い分け</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>CLAUDE.md の書き方を実践する上で最も重要なのが、グローバルとプロジェクトの使い分けです。この2層構造を理解すると、複数プロジェクトを効率よく管理できます。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":3} -->
+<h3 class="wp-block-heading">グローバル設定（~/.claude/CLAUDE.md）に書くもの</h3>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>グローバル設定には、プロジェクトを問わず自分が常に守りたいルールを書きます。特に以下のような内容が該当します。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:list -->
+<ul class="wp-block-list">
+<li>出力言語（「常に日本語で回答してください」など）</li>
+<li>コミットメッセージの形式（Conventional Commits など）</li>
+<li>説明スタイルの好み（「コードより先に概要を説明してください」など）</li>
+<li>セキュリティ上の注意（「環境変数をコードに直書きしないでください」など）</li>
+</ul>
+<!-- /wp:list -->
+
+<!-- wp:paragraph -->
+<p>グローバル設定は最大50行程度に収めるのが理想です。要するに、詳細はプロジェクト側に任せて、どのプロジェクトでも変わらない最小限の設定だけを置くという考え方です。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":3} -->
+<h3 class="wp-block-heading">プロジェクト設定（./CLAUDE.md）に書くもの</h3>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>プロジェクト設定には、そのプロジェクト固有の情報を集中させます。チームメンバーとの共有も考慮して、git でバージョン管理することが前提です。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:list -->
+<ul class="wp-block-list">
+<li>技術スタックとバージョン（チームが採用した技術の一覧）</li>
+<li>ビルド・テスト・デプロイコマンド（プロジェクト固有のスクリプト）</li>
+<li>ディレクトリ構成と各フォルダの役割</li>
+<li>コーディング規約とその理由（プロジェクト内で合意したルール）</li>
+<li>よくある落とし穴や注意事項（Claude が繰り返し間違えた箇所）</li>
+</ul>
+<!-- /wp:list -->
+
+<!-- wp:heading {"level":3} -->
+<h3 class="wp-block-heading">ローカル設定（./CLAUDE.local.md）に書くもの</h3>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>CLAUDE.local.md は .gitignore に追加して、チームと共有しない個人設定を置く場所です。たとえば、自分のローカル環境だけで使うデータベース接続先や、テスト用のアカウント情報などが該当します。ただし、機密情報そのものは絶対に書かないことが鉄則です。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>なお、<a href="https://m-totsu.com/category/%e7%94%9f%e6%88%90ai/">生成AIカテゴリの記事一覧</a>では、Claude Code の hooks 機能を使ったワークフロー自動化についても解説しています。CLAUDE.md と組み合わせることで、さらに強力な開発環境を構築できます。さらに、<a href="https://www.m-totsu.com/886/">Claude Codeの基本コマンド一覧【保存版チートシート】</a>も参照すると、日常的な操作の効率化に役立ちます。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":2} -->
+<h2 class="wp-block-heading">実際の効果：CLAUDE.md ありなし Before / After 比較</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>CLAUDE.md の書き方を実際に適用した場合と、設定しない場合とで、Claude の動作がどう変わるかを具体的に比較します。筆者はまだ試行錯誤中で「これが最適解」と言える段階ではありませんが、明確に改善したと感じる部分はあります。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":3} -->
+<h3 class="wp-block-heading">Before：CLAUDE.md なし</h3>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>たとえば、新しいコンポーネントを作ってほしいと頼んだ場合、以下のような問題が起きていました。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:code -->
+<pre class="wp-block-code"><code>【ユーザーのプロンプト】
+ユーザー一覧を表示するコンポーネントを作ってください
+
+【Claude の出力（CLAUDE.md なし）】
+// デフォルト export を使っている
+export default function UserList() {
+  // any 型を使っている
+  const [users, setUsers] = useState&lt;any[]&gt;([])
+
+  useEffect(() => {
+    // fetch を直接使っている（apiClient を使ってほしいのに）
+    fetch('/api/users')
+      .then(res => res.json())
+      .then(data => setUsers(data))
+  }, [])
+
+  return (
+    &lt;div style={{ padding: '20px' }}&gt;{/* インライン style */}
+      {users.map(user => (
+        &lt;div key={user.id}&gt;{user.name}&lt;/div&gt;
+      ))}
+    &lt;/div&gt;
+  )
+}</code></pre>
+<!-- /wp:code -->
+
+<!-- wp:paragraph -->
+<p>このコードには、プロジェクトのルールに反する点が4箇所あります。そのたびに手動で修正が必要でした。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":3} -->
+<h3 class="wp-block-heading">After：CLAUDE.md あり</h3>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>同じプロンプトを CLAUDE.md 設定後に実行すると、出力が大きく変わります。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:code -->
+<pre class="wp-block-code"><code>【ユーザーのプロンプト】
+ユーザー一覧を表示するコンポーネントを作ってください
+
+【Claude の出力（CLAUDE.md あり）】
+import { useQuery } from '@tanstack/react-query'
+import { apiClient } from '@/lib/apiClient'
+import type { User } from '@/types/user'
+
+// named export を使用（CLAUDE.md のルールに従う）
+export function UserList() {
+  // 型を明示（any 型を使わない）
+  const { data: users = [], isLoading } = useQuery&lt;User[]&gt;({
+    queryKey: ['users'],
+    // fetch を直接使わず apiClient を経由（CLAUDE.md のルールに従う）
+    queryFn: () => apiClient.get('/users'),
+  })
+
+  if (isLoading) return &lt;div&gt;読み込み中...&lt;/div&gt;
+
+  return (
+    &lt;ul className="space-y-2"&gt;{/* Tailwind を使用（インライン style なし）*/}
+      {users.map(user => (
+        &lt;li key={user.id} className="p-4 border rounded"&gt;
+          {user.name}
+        &lt;/li&gt;
+      ))}
+    &lt;/ul&gt;
+  )
+}</code></pre>
+<!-- /wp:code -->
+
+<!-- wp:paragraph -->
+<p>プロジェクトのルールをすべて守ったコードが一発で生成されました。修正の手間がほぼゼロになります。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":3} -->
+<h3 class="wp-block-heading">CLAUDE.md の効果が出やすい場面・出にくい場面</h3>
+<!-- /wp:heading -->
+
+<!-- wp:table -->
+<figure class="wp-block-table"><table><thead><tr><th>場面</th><th>効果</th><th>理由</th></tr></thead><tbody><tr><td>コード生成・新規ファイル作成</td><td>大</td><td>コーディング規約・スタイルが一貫して反映される</td></tr><tr><td>特定コマンドの実行</td><td>大</td><td>プロジェクト固有のコマンドを把握した上で提案される</td></tr><tr><td>既存コードのリファクタリング</td><td>中</td><td>規約は反映されるが、既存コードの文脈も影響する</td></tr><tr><td>複雑なアーキテクチャ判断</td><td>小</td><td>CLAUDE.md だけでは情報が不足することがある</td></tr></tbody></table></figure>
+<!-- /wp:table -->
+
+<!-- wp:paragraph -->
+<p>このように、CLAUDE.md の効果は場面によって大きく差があります。単純なコード生成では劇的な改善が見られますが、複雑な設計判断では CLAUDE.md だけでは足りず、その都度詳細な指示が必要なこともあります。ただし、繰り返しの説明が減るだけでも、開発効率は確実に上がっています。</p>
+<!-- /wp:paragraph -->
+
+<!-- AFFILIATE_BOOKS -->
+
+<!-- wp:heading {"level":2} -->
+<h2 class="wp-block-heading">まとめ：CLAUDE.md 書き方のポイント</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>CLAUDE.md の書き方と活用法を解説しました。要点を整理します。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:list -->
+<ul class="wp-block-list">
+<li>CLAUDE.md はセッション開始時に自動読み込みされる「プロジェクトメモリ」</li>
+<li>グローバル（~/.claude/CLAUDE.md）・プロジェクト（./CLAUDE.md）・ローカル（./CLAUDE.local.md）の3層構造で管理する</li>
+<li>書く内容は「削除したら Claude が間違えるか」を基準に取捨選択する</li>
+<li>500行以内に収め、WHY（理由）を必ず添える</li>
+<li>禁止事項には代替手段を示す</li>
+<li>Claude が誤った提案をするたびにフィードバックとして追記し、育てていく</li>
+<li><code>/memory</code> コマンドで読み込み確認ができる</li>
+<li>まずは <code>/init</code> で初期ファイルを生成し、プロジェクトに合わせて編集するのが最速</li>
+</ul>
+<!-- /wp:list -->
+
+<!-- wp:paragraph -->
+<p>Claude Code をより深く活用したい方は、<a href="https://m-totsu.com/category/%e7%94%9f%e6%88%90ai/">生成AIカテゴリの記事一覧</a>もぜひご覧ください。プロンプトの書き方や .claudeignore の設定方法、hooks 機能を使った自動化など、関連記事を順次公開しています。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>CLAUDE.md は一度書いて終わりではなく、プロジェクトとともに育てていくものです。まずは小さく始めて、Claude に教え続けるループを回してみてください。</p>
+<!-- /wp:paragraph -->

@@ -28,6 +28,7 @@ if str(_lib_dir.parent) not in sys.path:
     sys.path.insert(0, str(_lib_dir.parent))
 
 from lib import config  # noqa: E402
+from lib.usage_tracker import UsageTracker  # noqa: E402
 
 # ロガー設定
 logger = logging.getLogger(__name__)
@@ -45,15 +46,20 @@ class BlogImageGenerator:
     2種類の画像生成に対応する。
     """
 
-    # アイキャッチ用のプロンプト補足（テキストなし・ウェブ向けの指示）
+    # アイキャッチ用のプロンプト補足（品質・構図・ライティング指示）
     _EYECATCH_SUFFIX = (
         "テキストや文字は一切含めないでください。"
-        "ウェブ用の明るく魅力的な画像にしてください。"
+        "構図: 主題を中央に配置した安定したバランスの良い構図、適度な余白。"
+        "ライティング: 自然光または柔らかいスタジオライトで立体感と奥行きを演出。"
+        "品質: 高解像度、鮮明なディテール、プロフェッショナルな仕上がり。"
+        "ウェブサムネイル向けに、ひと目で内容が伝わる魅力的なビジュアルにしてください。"
     )
 
-    # 挿絵用のプロンプト補足（フラットデザイン指示）
+    # 挿絵用のプロンプト補足（フラットデザイン・視認性指示）
     _ILLUSTRATION_SUFFIX = (
-        "シンプルでわかりやすいイラスト、フラットデザインで描いてください。"
+        "シンプルでわかりやすいフラットデザインイラストで描いてください。"
+        "スタイル: クリーンなライン、明るく彩度の高い配色、余白を活かした構図。"
+        "主題を中央に配置し、ブログ記事の説明用として視認性を最優先にしてください。"
         "テキストや文字は含めないでください。"
     )
 
@@ -77,6 +83,7 @@ class BlogImageGenerator:
                 "コンストラクタに api_key を渡してください。"
             )
         self._client = genai.Client(api_key=self._api_key)
+        self._tracker = UsageTracker()
         logger.info("BlogImageGenerator を初期化しました")
 
     # ──────────────────────────────────────────────
@@ -102,13 +109,15 @@ class BlogImageGenerator:
         # プロンプトにスタイルと補足指示を付加
         full_prompt = f"{prompt}\nスタイル: {style}\n{self._EYECATCH_SUFFIX}"
 
-        return self._generate(
+        result = self._generate(
             prompt=full_prompt,
             output_path=output_path,
             model=config.EYECATCH_MODEL,
             aspect_ratio=config.EYECATCH_ASPECT,
             image_size=config.EYECATCH_SIZE,
         )
+        self._tracker.record("eyecatch", config.EYECATCH_MODEL, config.EYECATCH_SIZE)
+        return result
 
     def generate_illustration(self, prompt: str, output_path: str) -> str:
         """記事内挿絵を生成する（Nano Banana Flash 使用）。
@@ -123,17 +132,22 @@ class BlogImageGenerator:
         # プロンプトに補足指示を付加
         full_prompt = f"{prompt}\n{self._ILLUSTRATION_SUFFIX}"
 
-        return self._generate(
+        result = self._generate(
             prompt=full_prompt,
             output_path=output_path,
             model=config.ILLUSTRATION_MODEL,
             aspect_ratio=config.ILLUSTRATION_ASPECT,
         )
+        self._tracker.record("illustration", config.ILLUSTRATION_MODEL)
+        return result
 
     def generate_from_requests(
         self, requests_path: str, output_dir: str
     ) -> dict:
         """image_requests.json を読み込み、全画像を一括生成する。
+
+        月次予算を超過している場合は API 生成をスキップし、
+        プロンプトのみを image_prompts_manual.md に出力する。
 
         Args:
             requests_path: image_requests.json のパス。
@@ -143,9 +157,9 @@ class BlogImageGenerator:
             生成結果の辞書:
             {
                 "eyecatch": {"path": "...", "alt": "..."},
-                "illustrations": [
-                    {"id": "...", "path": "...", "alt": "...", "caption": "..."}
-                ]
+                "illustrations": [...],
+                "budget_skipped": True/False,  # 予算超過でスキップした場合 True
+                "prompts_file": "..."           # プロンプト出力ファイルパス（スキップ時）
             }
         """
         requests_path = Path(requests_path)
@@ -155,6 +169,32 @@ class BlogImageGenerator:
         # image_requests.json を読み込み
         with open(requests_path, "r", encoding="utf-8") as f:
             image_requests = json.load(f)
+
+        # ── 予算チェック ──
+        budget = self._tracker.check_budget()
+        if budget["should_warn"]:
+            logger.warning(
+                f"Gemini API 予算警告: 今月 ${budget['total_cost_usd']:.4f} / "
+                f"予算 ${budget['budget_usd']:.2f} "
+                f"({budget['budget_used_pct']:.1f}%)"
+            )
+        if budget["should_skip"]:
+            logger.error(
+                f"Gemini API 予算超過: ${budget['total_cost_usd']:.4f} >= "
+                f"${budget['budget_usd']:.2f}。API 生成をスキップします。"
+            )
+            prompts_file = self._write_prompts_only(
+                image_requests=image_requests,
+                output_dir=output_dir,
+                budget_stats=budget,
+            )
+            return {
+                "eyecatch": None,
+                "illustrations": [],
+                "budget_skipped": True,
+                "prompts_file": str(prompts_file),
+                "budget_stats": budget,
+            }
 
         results = {"eyecatch": None, "illustrations": []}
 
@@ -215,12 +255,88 @@ class BlogImageGenerator:
                 time.sleep(self._REQUEST_INTERVAL)
 
         # ── 結果を image_results.json として保存 ──
+        results["budget_skipped"] = False
         results_path = output_dir.parent / "image_results.json"
         with open(results_path, "w", encoding="utf-8") as f:
             json.dump(results, f, ensure_ascii=False, indent=2)
         logger.info(f"画像生成結果を保存しました: {results_path}")
 
         return results
+
+    def _write_prompts_only(
+        self,
+        image_requests: dict,
+        output_dir: Path,
+        budget_stats: dict,
+    ) -> Path:
+        """予算超過時にプロンプトのみを Markdown ファイルに出力する。
+
+        出力ファイルに Google AI Studio で使用できるプロンプトを記載し、
+        ユーザーが手動で画像生成できるようにする。
+
+        Returns:
+            生成したファイルのパス。
+        """
+        lines = [
+            "# 画像生成プロンプト（手動生成用）",
+            "",
+            "> **Gemini API 月次予算超過のため、自動生成をスキップしました。**",
+            f"> 今月の累計コスト: **${budget_stats['total_cost_usd']:.4f}**"
+            f" / 予算: ${budget_stats['budget_usd']:.2f}",
+            ">",
+            "> 以下のプロンプトを [Google AI Studio](https://aistudio.google.com/) に貼り付けて手動生成してください。",
+            "> モデル: `gemini-3.1-flash-image-preview`（または `gemini-2.0-flash-exp`）",
+            "",
+        ]
+
+        eyecatch = image_requests.get("eyecatch")
+        if eyecatch:
+            style = eyecatch.get("style", "モダンでクリーンなデザイン")
+            lines += [
+                "## アイキャッチ画像 → `images/eyecatch.png` として保存",
+                f"- アスペクト比: **16:9**（横長）",
+                f"- 保存先: `{output_dir}/eyecatch.png`",
+                "",
+                "```",
+                f"{eyecatch['prompt']}",
+                f"スタイル: {style}",
+                "テキストや文字は一切含めないでください。ウェブ用の明るく魅力的な画像にしてください。",
+                "```",
+                "",
+            ]
+
+        illustrations = image_requests.get("illustrations", [])
+        for i, illust in enumerate(illustrations):
+            illust_id = illust.get("id", f"illust_{i + 1}")
+            lines += [
+                f"## 挿絵 {i + 1}（{illust_id}） → `images/illustration_{i + 1}.png` として保存",
+                f"- アスペクト比: **4:3**",
+                f"- 保存先: `{output_dir}/illustration_{i + 1}.png`",
+                f"- alt テキスト: `{illust.get('alt', '')}`",
+                "",
+                "```",
+                f"{illust['prompt']}",
+                "シンプルでわかりやすいイラスト、フラットデザインで描いてください。テキストや文字は含めないでください。",
+                "```",
+                "",
+            ]
+
+        prompts_file = output_dir.parent / "image_prompts_manual.md"
+        prompts_file.write_text("\n".join(lines), encoding="utf-8")
+        logger.info(f"プロンプトファイルを出力しました: {prompts_file}")
+
+        # image_results.json にも記録（パスは null）
+        results = {
+            "eyecatch": None,
+            "illustrations": [],
+            "budget_skipped": True,
+            "prompts_file": str(prompts_file),
+        }
+        results_path = output_dir.parent / "image_results.json"
+        with open(results_path, "w", encoding="utf-8") as f:
+            json.dump(results, f, ensure_ascii=False, indent=2)
+
+        return prompts_file
 
     def generate_blog_images(
         self,
@@ -253,8 +369,12 @@ class BlogImageGenerator:
         # image_requests.json 相当のデータを組み立て
         image_requests = {
             "eyecatch": {
-                "prompt": f"{topic}を表現する、ブログ記事のアイキャッチ画像",
-                "style": "モダンでクリーンなデザイン",
+                "prompt": (
+                    f"技術ブログ記事「{topic}」のアイキャッチ画像。"
+                    f"{topic}の概念や魅力を視覚的に表現する。"
+                    "広角ショット、中央配置の安定した構図。プロフェッショナルで印象的なビジュアル。"
+                ),
+                "style": "モダンでクリーンなデザイン、深みのある背景色と明るいアクセントカラー",
                 "alt": topic,
             },
             "illustrations": [
@@ -492,6 +612,11 @@ def main():
         action="store_true",
         help="APIキーの動作確認テストを実行",
     )
+    parser.add_argument(
+        "--check-budget",
+        action="store_true",
+        help="今月の Gemini API 使用量・予算状況を表示して終了",
+    )
 
     args = parser.parse_args()
 
@@ -500,6 +625,15 @@ def main():
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
+
+    # 予算確認モード
+    if args.check_budget:
+        import subprocess
+        result = subprocess.run(
+            [sys.executable, str(_lib_dir / "usage_tracker.py")],
+            capture_output=False,
+        )
+        sys.exit(result.returncode)
 
     # テストモード
     if args.test:
