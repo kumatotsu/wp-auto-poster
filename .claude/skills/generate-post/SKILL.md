@@ -74,11 +74,25 @@ context: fork
    - テーマの主要トピック・キーワード
    - 読者が関心を持ちそうなポイント
    - 記事に盛り込むと効果的な具体的エピソードの方向性
+3. リサーチで参照した出典を `drafts/{slug}/sources.json` に保存する:
+   ```json
+   [
+     {
+       "id": 1,
+       "title": "参照した記事・ページのタイトル",
+       "site": "サイト名・メディア名",
+       "url": "https://...",
+       "accessed": "YYYY-MM-DD"
+     }
+   ]
+   ```
+   URLが取得できなかった情報源は sources.json から除外する（出典のない内容は引用番号なしで執筆する）。
 
 **アウトラインモード**: KW補完リサーチのみ実施する（アウトライン自体に構成・意図が含まれているため簡略化）。
 1. アウトラインの「フォーカスKW」と「関連KW」を抽出する
 2. WebSearchで1〜2クエリのみ実行し、最新の競合記事の傾向と補完情報を確認する
 3. アウトラインの「検索意図」と照合して、不足トピックがあれば記録する
+4. 参照した出典があれば `drafts/{slug}/sources.json` に保存する。参照なしの場合は空配列 `[]` を書き込む。
 
 ### Step 1.5: ユーザーエピソードの収集（AskUserQuestion）
 
@@ -159,21 +173,13 @@ Task(
 
 完了後に `article.html`、`image_requests.json`、`affiliate_requests.json` が生成されることを確認する。
 
-### Step 3: 画像生成・SEOレビュー・アフィリエイトリンク生成（並列実行）
+### Step 3: 画像生成・SEOレビュー・アフィリエイトリンク生成
 
-以下の3つのタスクをTaskツールで**同時に**起動する（1つのメッセージ内で3つのTask呼び出し）。
+**画像生成はインラインで実行**し、SEOレビューとアフィリエイトリンク生成はTaskで並列実行する。
 
-**画像生成タスク:**
-```
-Task(
-  subagent_type="wp-image-generator",
-  prompt="画像を生成してください。
-    リクエストファイル: drafts/{slug}/image_requests.json
-    出力先: drafts/{slug}/images/
-    結果ファイル: drafts/{slug}/image_results.json",
-  description="画像生成"
-)
-```
+#### 3-1: SEOレビューとアフィリエイトリンク生成を起動（並列）
+
+以下の2つのタスクをTaskツールで**同時に**起動する：
 
 **SEOレビュータスク:**
 
@@ -217,7 +223,23 @@ Task(
 )
 ```
 
-3つすべての完了を待つ。
+2つの完了を待つ。
+
+#### 3-2: 画像生成をインラインで実行（gemini-imageスキル・ワークフローモード）
+
+**gemini-imageはブラウザツールを必要とするためTask経由では実行できない。**
+generate-postの実行コンテキスト内でgemini-imageスキルの手順をそのまま実行する。
+
+```
+画像を生成してください。
+リクエストファイル: drafts/{slug}/image_requests.json
+出力先: drafts/{slug}/images/
+結果ファイル: drafts/{slug}/image_results.json
+```
+
+gemini-imageスキルのワークフローモード手順（image_requests.jsonの読み込み→英語プロンプト変換→Geminiブラウザ操作→画像保存→image_results.json書き込み）を実行する。
+
+3-1と3-2が両方完了してから次のステップへ進む。
 
 ### Step 4: WordPress下書き投稿
 
@@ -243,6 +265,7 @@ Task(
 - SEOスコア（タイトル文字数、メタディスクリプション文字数、キーワード密度）
 - アフィリエイトリンク情報（挿入された書籍名、リンク数）
 - 次のアクション:「WordPress管理画面で内容を確認し、問題なければ『公開』ボタンを押してください」
+- **Gemini API 利用料**: https://aistudio.google.com/spend で今月の累計を確認できます。確認後は `python lib/usage_tracker.py --record <金額>` で記録してください（例: `--record 147`）
 
 ## エラーハンドリング
 
