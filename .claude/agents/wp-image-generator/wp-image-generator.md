@@ -87,7 +87,7 @@ diagrams セクションがある場合、Mermaid CLIで図解を生成する。
 
 ```bash
 cd /Users/totsu00/ClaudeCodeWork/wp-auto-poster
-/Users/totsu00/.local/bin/uv run python lib/mermaid_renderer.py \
+/Users/totsu00/.local/bin/uv run python lib/mermaid_playwright.py \
   --request ../drafts/{slug}/image_requests.json \
   --output ../drafts/{slug}/images/
 ```

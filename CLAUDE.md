@@ -26,7 +26,7 @@ uv run python lib/wp_client.py --action check
 uv run python lib/wp_client.py --action publish --draft-dir ../drafts/{slug}/
 uv run python lib/wp_client.py --action update --post-id {id} --draft-dir ../drafts/{slug}/
 uv run python lib/image_client.py --request ../drafts/{slug}/image_requests.json --output ../drafts/{slug}/images/
-uv run python lib/mermaid_renderer.py --request ../drafts/{slug}/image_requests.json --output ../drafts/{slug}/images/
+uv run python lib/mermaid_playwright.py --request ../drafts/{slug}/image_requests.json --output ../drafts/{slug}/images/
 uv run python lib/screenshot_capturer.py --url https://example.com --output screenshot.png
 ```
 
