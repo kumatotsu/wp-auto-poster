@@ -164,19 +164,22 @@ Task(
     {sources.json の内容（JSON文字列として貼り付け）}
 
     出典がある場合（sources配列が空でない場合）は、以下のルールに従ってください：
-    - 各出典に基づいた記述・数値・事実の直後に必ず <sup>[番号]</sup> を付与する（例: 〜とされています。<sup>[1]</sup>）
+    - 各出典に基づいた記述・数値・事実の直後に「出典: <a href=\"{url}\" target=\"_blank\" rel=\"noopener noreferrer\">{site}</a>」を付与する（例: 〜とされています。出典: <a href=\"https://...\" target=\"_blank\" rel=\"noopener noreferrer\">gihyo.jp</a>）
+    - 複数出典を同時に示す場合は「出典: <a>A</a>、<a>B</a>」または「（出典: <a>A</a>、<a>B</a>）」の形式にする
     - 引用は記事末尾のまとめセクションだけでなく、**本文中の各H2セクションに最低1箇所以上**配置すること
-    - 同じ出典でも複数の関連箇所に重複して引用してよい（例: 同じ情報源から2つの事実を引用する場合は両方に番号を付ける）
-    - 記事末尾に以下の形式で「参考文献」セクションを追加する:
-      <section class=\"references\">
-        <h2>参考文献</h2>
-        <ol>
-          <li id=\"ref-1\"><a href=\"{url}\" target=\"_blank\" rel=\"noopener noreferrer\">{title}</a>（{site}、{accessed}参照）</li>
-          ...
-        </ol>
-      </section>
+    - 同じ出典でも複数の関連箇所に重複して引用してよい
+    - 記事末尾に以下の形式で「引用・出典」セクションを追加する（Gutenbergブロック形式）:
+      <!-- wp:heading {\"level\":2} -->
+      <h2 class=\"wp-block-heading\">引用・出典</h2>
+      <!-- /wp:heading -->
+      <!-- wp:list -->
+      <ul class=\"wp-block-list\">
+      <li><a href=\"{url}\" target=\"_blank\" rel=\"noopener noreferrer\">{site}: {title}</a></li>
+      ...
+      </ul>
+      <!-- /wp:list -->
 
-    出典リストが空（[]）の場合は引用番号・参考文献セクションは不要です。",
+    出典リストが空（[]）の場合は引用リンク・引用・出典セクションは不要です。",
   description="記事執筆"
 )
 ```
@@ -207,19 +210,22 @@ Task(
     {sources.json の内容（JSON文字列として貼り付け）}
 
     出典がある場合（sources配列が空でない場合）は、以下のルールに従ってください：
-    - 各出典に基づいた記述・数値・事実の直後に必ず <sup>[番号]</sup> を付与する（例: 〜とされています。<sup>[1]</sup>）
+    - 各出典に基づいた記述・数値・事実の直後に「出典: <a href=\"{url}\" target=\"_blank\" rel=\"noopener noreferrer\">{site}</a>」を付与する（例: 〜とされています。出典: <a href=\"https://...\" target=\"_blank\" rel=\"noopener noreferrer\">gihyo.jp</a>）
+    - 複数出典を同時に示す場合は「出典: <a>A</a>、<a>B</a>」または「（出典: <a>A</a>、<a>B</a>）」の形式にする
     - 引用は記事末尾のまとめセクションだけでなく、**本文中の各H2セクションに最低1箇所以上**配置すること
-    - 同じ出典でも複数の関連箇所に重複して引用してよい（例: 同じ情報源から2つの事実を引用する場合は両方に番号を付ける）
-    - 記事末尾に以下の形式で「参考文献」セクションを追加する:
-      <section class=\"references\">
-        <h2>参考文献</h2>
-        <ol>
-          <li id=\"ref-1\"><a href=\"{url}\" target=\"_blank\" rel=\"noopener noreferrer\">{title}</a>（{site}、{accessed}参照）</li>
-          ...
-        </ol>
-      </section>
+    - 同じ出典でも複数の関連箇所に重複して引用してよい
+    - 記事末尾に以下の形式で「引用・出典」セクションを追加する（Gutenbergブロック形式）:
+      <!-- wp:heading {\"level\":2} -->
+      <h2 class=\"wp-block-heading\">引用・出典</h2>
+      <!-- /wp:heading -->
+      <!-- wp:list -->
+      <ul class=\"wp-block-list\">
+      <li><a href=\"{url}\" target=\"_blank\" rel=\"noopener noreferrer\">{site}: {title}</a></li>
+      ...
+      </ul>
+      <!-- /wp:list -->
 
-    出典リストが空（[]）の場合は引用番号・参考文献セクションは不要です（アウトラインモードで独自構成の場合など）。",
+    出典リストが空（[]）の場合は引用リンク・引用・出典セクションは不要です（アウトラインモードで独自構成の場合など）。",
   description="記事執筆"
 )
 ```
