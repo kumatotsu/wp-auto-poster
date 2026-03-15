@@ -41,6 +41,51 @@
 - [x] 4軸で一次情報と信頼できる補助情報を収集し、JSON形式へ整理する
 - [x] `sources_codex.json` と `research_summary_codex.md` を生成し、内容を検証する
 
+## SNS戦略スキル開発（2026-03-15〜）
+
+詳細仕様: `tasks/sns-strategy.md` 参照
+
+### Phase 1: 即効性スキル（優先着手）
+
+- [ ] `/post-x` スキル作成 — Blog公開後にX要約スレッドをClaude in Chromeで投稿
+  - [ ] `drafts/{slug}/` から記事内容を読み込みスレッド生成
+  - [ ] Claude in Chrome で x.com に投稿（アイキャッチ画像1枚添付）
+  - [ ] スキルファイル作成・動作テスト
+
+- [ ] `/post-zenn` スキル作成 — Zenn用要約MD生成 → git push
+  - [ ] Zenn GitHub連携リポジトリのセットアップ確認
+  - [ ] `drafts/{slug}/` からZenn用Markdown（800〜1500字）生成ロジック
+  - [ ] Blog URL誘導文の自動挿入
+  - [ ] git push まで自動化・動作テスト
+
+### Phase 2: 動画ワークフロースキル
+
+- [ ] `/generate-thumbnail` スキル作成 — マスコット入りサムネイル生成
+  - [ ] 既存 `/gemini-image` スキルをベースに拡張
+  - [ ] マスコットキャラクター仕様をプロンプトに固定化
+  - [ ] 9:16（Shorts用）と 16:9（通常用）の2サイズ対応
+  - [ ] `drafts/{slug}/images/thumbnail.png` に保存
+
+- [ ] `/notebooklm-add` スキル作成 — URLソース追加 + Video生成トリガー
+  - [ ] Claude in Chrome で notebooklm.google.com の操作フロー確認
+  - [ ] URLソース追加 → Studio → Video Overview → Brief → Cinematic の操作を自動化
+  - [ ] 生成完了後のダウンロード自動化
+
+### Phase 3: アップロードスキル
+
+- [ ] `/upload-shorts` スキル作成 — YouTube Shorts / TikTok アップロード
+  - [ ] YouTube Studio アップロードフローをClaude in Chromeで自動化
+  - [ ] タイトル・説明文・サムネイル設定の自動入力
+  - [ ] TikTok アップロードフローを追加
+  - [ ] 動作テスト（手動公開ステップは残す）
+
+### Phase 4: 統合・運用
+
+- [ ] 全スキルを連携した `/publish-sns <slug>` マスタースキル検討
+  - [ ] post-x → post-zenn → notebooklm-add → generate-thumbnail → upload-shorts の順次実行
+- [ ] コンテンツカレンダー運用開始（週次: 月Blog→金Shorts公開）
+- [ ] KPI計測設定（X分析・Zennいいね・YT再生数）
+
 ## Review
 
 - `drafts/2026-03-15_claude-personalize-claude-md-guide/sources.json` と Anthropic 公式ドキュメントを確認し、Webアプリのパーソナライズ機能と Claude Code の `CLAUDE.md` を分けて説明する構成方針を整理
