@@ -8,6 +8,15 @@ allowed-tools:
   - Glob
   - WebSearch
   - WebFetch
+  - mcp__Claude_in_Chrome__navigate
+  - mcp__Claude_in_Chrome__tabs_context_mcp
+  - mcp__Claude_in_Chrome__tabs_create_mcp
+  - mcp__Claude_in_Chrome__computer
+  - mcp__Claude_in_Chrome__find
+  - mcp__Claude_in_Chrome__read_page
+  - mcp__Claude_in_Chrome__javascript_tool
+  - mcp__Claude_in_Chrome__read_console_messages
+  - mcp__Claude_in_Chrome__get_page_text
 context: fork
 ---
 
@@ -72,40 +81,101 @@ ASINが見つかった場合、WebFetchで `https://www.amazon.co.jp/dp/{ASIN}` 
 - 比較的新しい（古すぎない。ただし定番書は例外）
 - AmazonでASINが確認できる
 
-## Step 4: affiliate_links.json の生成
+## Step 4: もしもアフィリエイト かんたんリンクカード でHTMLを取得
 
-```json
-{
-  "heading": "あわせて読みたいおすすめ書籍",
-  "intro_text": "{テーマ}をさらに深めたい方には、以下の書籍がおすすめです。",
-  "books": [
-    {
-      "title": "書籍タイトル [ 著者名 ]",
-      "keyword": "書籍タイトル 著者名",
-      "asin": "XXXXXXXXXX",
-      "publisher": "出版社名",
-      "image_url": "",
-      "rakuten_url": ""
-    }
-  ]
-}
+Claude in Chrome でもしもアフィリエイトのUIを操作し、公式生成HTMLをそのまま取得する。
+
+### 4-1. タブを準備
+
+```
+tabs_context_mcp(createIfEmpty: true) でタブIDを取得
+navigate → https://af.moshimo.com/af/shop/service/easy-link-card
 ```
 
-→ `{output_dir}/affiliate_links.json` に保存
+### 4-2. ログイン確認
 
-## Step 5: かんたんリンクHTML生成
+`tabs_context_mcp` でURLを確認:
+- `login` を含む → ユーザーに「ブラウザでもしもアフィリエイトにログインしてください」と伝えて待機 → 完了連絡を受けたら再度 navigate
+- `easy-link-card` → 次へ
 
-```bash
-cd /Users/totsu00/ClaudeCodeWork/wp-auto-poster
-/Users/totsu00/.local/bin/uv run python lib/affiliate_linker.py \
-  --request {output_dir}/affiliate_links.json \
-  --output {output_dir}/affiliate_section.html
+### 4-3. 書籍ごとにHTMLを取得（各書籍を繰り返す）
+
+**入力:**
+```
+find「商品販売ページのURL またはキーワードを入力」でテキストボックスを探す
+computer(triple_click, ref) → computer(type) で Amazon URL を入力
+  例: https://www.amazon.co.jp/dp/{ASIN}
+computer(key: Return) → computer(wait: 3秒)
 ```
 
-## Step 6: 結果報告
+**HTMLソースセクションを開く:**
+```
+find「HTMLソース リンク」→ computer(left_click)
+```
+
+**WordPress対応チェック（未チェックなら）:**
+```
+find「HTMLソースを1行にする WordPress対応 チェックボックス」
+→ チェックされていなければ computer(left_click)
+```
+
+**「全文コピー」ボタンでHTMLを取得:**
+```
+find「全文コピー ボタン」→ computer(left_click)
+```
+
+Chromeがクリップボード許可ダイアログを表示した場合:
+- ユーザーに「ブラウザに『クリップボードへのアクセス許可』ダイアログが出ています。「許可する」をクリックしてください。」と伝えて待機
+- 完了連絡を受けてから次へ（一度許可すれば以降は不要）
+
+**クリップボード内容を読み取り:**
+```javascript
+// javascript_tool で実行
+navigator.clipboard.readText().then(t => {
+  console.log('HTMLSTART:' + t + ':HTMLEND');
+}).catch(e => {
+  console.log('CLIPERR:' + e);
+});
+```
+```
+computer(wait: 2秒)
+read_console_messages(pattern: 'HTMLSTART|CLIPERR', clear: true)
+```
+
+- `HTMLSTART:～:HTMLEND` → 間のテキストをその書籍のHTMLとして保存
+- `CLIPERR:` → ユーザーに再度許可を促す
+
+**商品が見つからない場合のフォールバック:**
+URLで失敗したら書籍タイトルをキーワードとして再試行する。それでも失敗したらその書籍をスキップ。
+
+### 4-4. Gutenbergブロック形式で保存
+
+取得した各書籍HTMLを以下の形式で結合して保存:
+
+```html
+<!-- wp:heading {"level":2} -->
+<h2 class="wp-block-heading">あわせて読みたいおすすめ書籍</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>{テーマ}をさらに深めたい方には、以下の書籍がおすすめです。</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:html -->
+{book1_html}
+<!-- /wp:html -->
+
+<!-- wp:html -->
+{book2_html}
+<!-- /wp:html -->
+```
+
+→ `{output_dir}/affiliate_section.html` に保存
+
+## Step 5: 結果報告
 
 ユーザーに以下を報告する:
-- 生成された書籍リスト（タイトル・ASIN）
+- 生成された書籍リスト（タイトル・ASIN・ショップ数）
 - `affiliate_section.html` のパス
 - **ドラフトモードの場合**: 「drafts/{slug}/affiliate_section.html に保存しました。WordPress投稿時に自動で記事末尾に挿入されます」と案内
 - **テーマモード（単体実行）の場合**: HTMLの内容をチャットに表示してコピーできるようにする
@@ -114,12 +184,16 @@ cd /Users/totsu00/ClaudeCodeWork/wp-auto-poster
 
 | エラー | 対処 |
 |--------|------|
-| 書籍が見つからない | 空のaffiliate_links.jsonを生成（booksが空配列） |
-| ASINが特定できない | keywordのみで登録（検索リンクになる） |
-| .env 設定なし | エラーを表示して停止 |
+| ログイン未済 | ユーザーにログインを促し待機 |
+| 商品が見つからない（URL） | キーワード検索にフォールバック |
+| 商品が見つからない（キーワード） | その書籍をスキップして続行 |
+| クリップボード許可ダイアログ | ユーザーに「許可する」クリックを促して待機 |
+| CLIPERR（許可拒否） | ユーザーに再度許可を促す |
+| クリップボードが空 | 「全文コピー」ボタンを再クリックしてリトライ |
 
 ## 注意事項
 
-- ASINが確実に特定できない場合は無理に入れない（keyword検索リンクで機能する）
+- `affiliate_linker.py` は使用しない（もしもサイトが公式HTMLを生成する）
+- もしもサイト経由で生成されるHTMLはAmazon・楽天市場・Yahoo!ショッピングの3ショップに対応している
 - 5年以上前の書籍は避ける。ただし定番書（O'Reilly等）は例外
-- 画像URLは空でよい（affiliate_linker.py がASINからGoogle Books APIで自動取得する）
+- ASINが確実に特定できない場合は書籍タイトルをキーワードとして入力する
