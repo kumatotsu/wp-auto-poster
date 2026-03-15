@@ -65,6 +65,26 @@ context: fork
 3. 日付とslugを生成: `{YYYY-MM-DD}_{slugified_title}`
 4. 作業ディレクトリを作成: `drafts/{slug}/` と `drafts/{slug}/images/`
 5. TodoWriteでタスクリストを作成して進捗管理
+6. **USE_CODEXフラグを設定する**
+   - `$ARGUMENTS` に `--no-codex` が含まれる場合: テーマから `--no-codex` を除去し `USE_CODEX = false` として次のステップへ進む（AskUserQuestionは不要）
+   - 含まれない場合: 以下の AskUserQuestion でモードを確認する
+
+```
+AskUserQuestion(
+  questions=[{
+    "question": "Codex を使ってリサーチとアウトライン設計を行いますか？",
+    "options": [
+      {"label": "Codex を使う", "description": "通常モード。Codexで4軸リサーチ＋SEOアウトライン設計を行う"},
+      {"label": "Codex を使わない", "description": "Claude直接モード。Codexトークン上限時などに使用"},
+      {"label": "その他"}
+    ],
+    "multiSelect": false
+  }]
+)
+```
+
+   - 「Codex を使う」→ `USE_CODEX = true`
+   - 「Codex を使わない」→ `USE_CODEX = false`
 
 ### Step 1: リサーチ（WebSearch）
 
@@ -88,6 +108,43 @@ context: fork
    ```
    URLが取得できなかった情報源は sources.json から除外する（出典のない内容は引用番号なしで執筆する）。
 
+**テーマモード（USE_CODEX = false 時の強化版リサーチ）**:
+
+`USE_CODEX = false` の場合は、codex-researcher が実施する4軸リサーチを Claude 自身が代わりに実施する。
+
+1. 以下の4軸で各2〜3クエリ（合計8〜12クエリ）を WebSearch で実行する:
+   - **最新トレンド軸**: 「{テーマ} 2025」「{テーマ} 最新」「{テーマ} 動向」
+   - **方法・手順軸**: 「{テーマ} 方法」「{テーマ} やり方」「{テーマ} 手順」
+   - **疑問・課題軸**: 「{テーマ} 問題」「{テーマ} できない」「{テーマ} 注意点」
+   - **実績・数値軸**: 「{テーマ} 事例」「{テーマ} 効果」「{テーマ} データ」
+
+2. URL確認済みのソースを `sources.json` に保存する（URLなし情報源は除外）
+
+3. 以下の内容を `drafts/{slug}/research_summary.md` に保存する:
+
+   ```markdown
+   # リサーチサマリー
+
+   ## テーマ
+   {テーマ名}
+
+   ## 使用した検索クエリ
+   1. {クエリ1}
+   2. {クエリ2}
+
+   ## 主要トピック・キーワード
+   - {トピック1}（最大10項目）
+
+   ## 読者の主な疑問・関心
+   - {疑問1}（最大5項目）
+
+   ## 記事に盛り込むと効果的なポイント
+   - {ポイント1}（最大5項目）
+
+   ## 出典数
+   {件数}件（sources.json参照）
+   ```
+
 **アウトラインモード**: KW補完リサーチを必ず実施する（省略・スキップ禁止）。
 
 > ⚠️ **重要**: `sources.json` を空配列 `[]` で手動作成してはならない。必ず以下の手順でWebSearchを実行してから作成すること。
@@ -103,7 +160,89 @@ context: fork
    - 最低1件以上の出典を収集すること
    - やむを得ず出典が0件の場合のみ空配列 `[]` を書き込む（その理由をコメントに残す）
 
-### Step 1.5: ユーザーエピソードの収集（AskUserQuestion）
+### Step 1.5: Codex によるアウトライン設計 ＋ A/Bリサーチ（並行実行）
+
+> **USE_CODEX = false の場合（`--no-codex` フラグまたは選択でCodexなしを選んだ場合）:**
+> Codex タスクを起動せず、Claude 自身が `outline.md` を生成して Step 1.6 へ進む。
+>
+> `drafts/{slug}/research_summary.md` と `drafts/{slug}/sources.json` を読み込み、
+> 以下のフォーマットで `drafts/{slug}/outline.md` を生成する:
+>
+> ```markdown
+> # {タイトル案}
+>
+> | 項目 | 内容 |
+> |------|------|
+> | フォーカスKW | {メインキーワード} |
+> | 関連KW | {関連KW群} |
+> | 検索意図 | {検索意図1行} |
+> | 対象読者 | ITエンジニア・AIツール関心層 |
+> | 差別化ポイント | {競合との差別化ポイント} |
+>
+> **リード文の方向性**: ...
+>
+> **記事構成案**:
+> - H2: ...
+>   - H3: ...
+> ...
+> - H2: まとめ
+>
+> **想定内部リンク先**: {m-totsu.com の関連記事}
+> ```
+>
+> 生成後、Step 1.6 へ進む（`sources_codex.json` / `research_summary_codex.md` は生成しない）。
+
+---
+
+**USE_CODEX = true の場合（通常モード）:**
+
+リサーチ完了後、以下の2タスクを**同時に**起動する。
+
+#### 1.5-A: Codex アウトライン設計（codex-outline-planner）
+
+```
+Task(
+  subagent_type="codex-outline-planner",
+  prompt="以下のテーマとリサーチ結果をもとに、SEO最適化されたアウトラインを設計してください。
+    テーマ: {テーマ}
+    作業ディレクトリ: drafts/{slug}/
+    出力先: drafts/{slug}/outline.md
+
+    【リサーチ結果サマリー】
+    {Step 1 で収集した主要情報（トレンド・競合記事の傾向・読者の疑問点）}
+
+    【出典情報】
+    sources.json パス: drafts/{slug}/sources.json",
+  description="Codexアウトライン設計"
+)
+```
+
+#### 1.5-B: Codex リサーチャー（A/Bテスト用・codex-researcher）
+
+> ⚠️ **A/Bテスト中**: 既存のStep 1インラインリサーチと比較するための並行実行。
+> `sources.json` は上書きしない。出力は `sources_codex.json` と `research_summary_codex.md`。
+
+```
+Task(
+  subagent_type="codex-researcher",
+  prompt="以下のテーマでリサーチを実行してください。
+    テーマ: {テーマ}
+    作業ディレクトリ: drafts/{slug}/
+    モード: {テーマモード or アウトラインモード}
+    {アウトラインモードの場合: アウトライン情報を追記}
+
+    出力先:
+    - drafts/{slug}/sources_codex.json
+    - drafts/{slug}/research_summary_codex.md",
+  description="Codexリサーチャー（A/Bテスト）"
+)
+```
+
+両タスクの完了を待つ。
+- 1.5-A失敗: Step 1.6へ進む（フォールバック: Claude がアウトラインを自力で設計）
+- 1.5-B失敗: A/Bテスト結果なしとして続行（メインフローに影響なし）
+
+### Step 1.6: ユーザーエピソードの収集（AskUserQuestion）
 
 リサーチ結果を踏まえて、ユーザーに記事に盛り込む個人的なエピソードを質問する。
 ユーザーならではの実体験を記事に含めることで、オリジナリティと信頼性を高める。
@@ -141,7 +280,35 @@ AskUserQuestion(
 
 Taskツールで `wp-article-writer` エージェントを起動する。
 
-**テーマモード:**
+**アウトライン優先モード（Codex アウトライン生成成功時）:**
+
+`drafts/{slug}/outline.md` が存在する場合は、その内容を読み込んでアウトラインモードで実行する。
+
+```
+Task(
+  subagent_type="wp-article-writer",
+  prompt="以下のアウトラインに従ってWordPress記事を執筆してください。
+    アウトラインの構成・見出し・リード文・キーワードを忠実に反映してください。
+    出力先: drafts/{slug}/
+    記事HTML → drafts/{slug}/article.html
+    画像リクエスト → drafts/{slug}/image_requests.json
+
+    【アウトライン（Codex設計）】
+    {outline.md の全文}
+
+    【ユーザーエピソード】
+    {エピソード}
+
+    【引用・出典の指示】
+    {sources.json の内容}
+    （出典ルールは通常のアウトラインモードと同じ）",
+  description="記事執筆（Codexアウトライン使用）"
+)
+```
+
+`drafts/{slug}/outline.md` が存在しない場合（Codex 失敗時）は、以下のフォールバックモードで実行する。
+
+**テーマモード（フォールバック）:**
 
 `drafts/{slug}/sources.json` の内容を読み込み、プロンプトに含めて渡す。
 
@@ -328,6 +495,12 @@ Task(
   - 出典なし（空配列 or ファイルなし）: 「引用出典: なし（アウトライン構成 / 出典取得なし）」と表示
 - 次のアクション:「WordPress管理画面で内容を確認し、問題なければ『公開』ボタンを押してください」
 - **Gemini API 利用料**: https://aistudio.google.com/spend で今月の累計を確認できます。確認後は `python lib/usage_tracker.py --record <金額>` で記録してください（例: `--record 147`）
+- **【A/Bテスト比較】** `sources_codex.json` が存在する場合、以下を比較表示する:
+  - インラインリサーチ（既存）: `sources.json` の件数・サイト名一覧
+  - codex-researcher: `sources_codex.json` の件数・サイト名一覧
+  - `research_summary_codex.md` の「主要トピック・キーワード」を抜粋
+  - 両者で重複しているURL・ユニークなURLの件数
+  - 一言コメント: 「codex-researcherが既存より優れている点 / 劣っている点」を簡潔に評価
 
 ## エラーハンドリング
 
